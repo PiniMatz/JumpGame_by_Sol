@@ -528,7 +528,7 @@ class Game {
                 this.ctx.fillText(plat.label, rx + plat.w/2, plat.y - 12);
             }
 
-            ctx.restore();
+            this.ctx.restore();
         }
     }
 
