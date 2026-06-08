@@ -11,11 +11,11 @@ const GAME_LEVELS = [
         portalY: 350,
         gravity: 0.45,
         theme: {
-            bgGradStart: "#1a1235",
-            bgGradEnd: "#080512",
+            bgGradStart: "#bae6fd", // תכלת שמיים בהיר
+            bgGradEnd: "#f0f9ff",   // לבן/תכלת רך
             accent: "#ec4899",
-            platformBase: "#8b5cf6",
-            skylineColor: "rgba(236, 72, 153, 0.05)"
+            platformBase: "#7c3aed",
+            skylineColor: "rgba(139, 92, 246, 0.15)"
         },
         platforms: [
             // פלטפורמת התחלה
@@ -66,11 +66,11 @@ const GAME_LEVELS = [
         portalY: 250,
         gravity: 0.48, // כבידה מעט חזקה יותר
         theme: {
-            bgGradStart: "#051329",
-            bgGradEnd: "#010610",
-            accent: "#39ff14", // ירוק גיימר זוהר
-            platformBase: "#0ea5e9", // כחול עמוק
-            skylineColor: "rgba(57, 255, 20, 0.04)"
+            bgGradStart: "#ffedd5", // כתום שקיעה בהיר
+            bgGradEnd: "#fee2e2",   // ורוד שקיעה בהיר
+            accent: "#0ea5e9",
+            platformBase: "#0284c7",
+            skylineColor: "rgba(251, 146, 60, 0.2)"
         },
         platforms: [
             // התחלה
@@ -126,11 +126,11 @@ const GAME_LEVELS = [
         portalY: 220,
         gravity: 0.42, // כבידה מעט נמוכה יותר (עולם צעצועים קפיצי)
         theme: {
-            bgGradStart: "#281205",
-            bgGradEnd: "#0e0501",
-            accent: "#f59e0b", // זהב מנצנץ
-            platformBase: "#ec4899", // ורוד בהיר
-            skylineColor: "rgba(245, 158, 11, 0.05)"
+            bgGradStart: "#fef9c3", // צהוב בוקר זהוב בהיר
+            bgGradEnd: "#e0f2fe",   // תכלת פסטל רך
+            accent: "#d97706",
+            platformBase: "#db2777",
+            skylineColor: "rgba(234, 179, 8, 0.25)"
         },
         platforms: [
             // התחלה

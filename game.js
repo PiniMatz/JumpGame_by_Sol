@@ -30,6 +30,14 @@ class Game {
         // פורטל
         this.portalRotation = 0;
 
+        // עננים מונפשים ברקע הבהיר
+        this.clouds = Array.from({length: 6}, (_, i) => ({
+            x: Math.random() * 1200 - 100,
+            y: 30 + Math.random() * 110,
+            size: 20 + Math.random() * 20,
+            speed: 0.05 + Math.random() * 0.1
+        }));
+
         this.initDOM();
     }
 
@@ -101,6 +109,18 @@ class Game {
         // כפתור איפוס ידני של השלב
         document.getElementById('btn-reset').addEventListener('click', () => {
             this.loadLevel(this.currentLevelIdx);
+        });
+
+        // כפתור חזרה לתפריט ראשי (Home)
+        document.getElementById('btn-home').addEventListener('click', () => {
+            this.gameState = 'MENU';
+            document.getElementById('game-hud').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+            // איפוס מפתחות לחוצים
+            this.keys.ArrowLeft = false;
+            this.keys.ArrowRight = false;
+            this.keys.ArrowUp = false;
+            this.keys.ArrowDown = false;
         });
 
         // האזנה לאירוע מוות מפיזיקה
@@ -175,10 +195,14 @@ class Game {
     // עדכון לוגיקה בכל פריים
     update() {
         if (this.gameState !== 'PLAYING') {
-            // אנימציות רקע בתפריטים
+            // אנימציות רקע בתפריטים ועננים
             this.portalRotation += 0.01;
+            this.updateClouds();
             return;
         }
+
+        // עדכון עננים
+        this.updateClouds();
 
         // 1. עדכון פיזיקת שחקן
         physics.update(this.keys);
@@ -223,6 +247,17 @@ class Game {
         }
     }
 
+    // פונקציית עזר לעדכון תנועת העננים
+    updateClouds() {
+        for (const cloud of this.clouds) {
+            cloud.x += cloud.speed;
+            if (cloud.x > this.canvas.width + 100) {
+                cloud.x = -100;
+                cloud.y = 30 + Math.random() * 110;
+            }
+        }
+    }
+
     // מעבר לשלב הבא / סיום עולם
     handleLevelComplete() {
         this.gameState = 'LEVEL_COMPLETE';
@@ -252,6 +287,8 @@ class Game {
     // ציור כל האלמנטים לקנבס
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        if (this.gameState !== 'PLAYING') return;
         
         if (!physics.level) return;
 
@@ -312,6 +349,19 @@ class Game {
         this.ctx.lineTo(offset + 20 * 250, this.canvas.height);
         this.ctx.closePath();
         this.ctx.fill();
+
+        // ציור עננים מונפשים ברקע הבהיר
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        for (const cloud of this.clouds) {
+            this.ctx.beginPath();
+            const cx = cloud.x;
+            const cy = cloud.y;
+            const r = cloud.size;
+            this.ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            this.ctx.arc(cx - r * 0.6, cy + r * 0.2, r * 0.7, 0, Math.PI * 2);
+            this.ctx.arc(cx + r * 0.6, cy + r * 0.2, r * 0.7, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
     }
 
     // ציור הפלטפורמות לפי סוגן
@@ -520,10 +570,10 @@ class Game {
                 }
             }
 
-            // כתיבת טקסט מעל לפלטפורמה (לדוגמה: כדור לחץ)
+            // כתיבת טקסט מעל לפלטפורמה (לדוגמה: כדור לחץ) - בצבע כהה קריא
             if (plat.label && plat.type !== 'normal') {
-                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-                this.ctx.font = 'bold 10px Rubik';
+                this.ctx.fillStyle = 'rgba(15, 23, 42, 0.6)'; // צבע אפור כהה שקוף מעט
+                this.ctx.font = 'bold 11px Rubik';
                 this.ctx.textAlign = 'center';
                 this.ctx.fillText(plat.label, rx + plat.w/2, plat.y - 12);
             }

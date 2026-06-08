@@ -43,6 +43,8 @@ class GamePhysics {
 
     setLevel(level) {
         this.level = level;
+        this.checkpointX = level.startX;
+        this.checkpointY = level.startY;
         
         // אתחול מצבים ספציפיים לפלטפורמות
         for (const plat of this.level.platforms) {
@@ -238,6 +240,10 @@ class GamePhysics {
 
                     // הפעלת התגובה הייחודית של סוג הפלטפורמה
                     this.triggerPlatformReaction(plat);
+
+                    // שמירת מיקום הבלוק האחרון כנקודת החזרה (checkpoint)
+                    this.checkpointX = plat.x + plat.w / 2 - p.w / 2;
+                    this.checkpointY = platY - p.h;
                     break; // התנגשות אחת מספיקה לריצה הנוכחית
                 } else {
                     // התנגשות מהצדדים או מלמטה
@@ -266,8 +272,8 @@ class GamePhysics {
         const p = this.player;
         const isSlam = p.isSlamming;
         
-        // הגברת רעש וזעזוע במקרה של Slam
-        this.screenShake = isSlam ? 15 : 4;
+        // ביטול רעידות מסך (לבקשת המשתמש)
+        this.screenShake = 0;
         
         switch (plat.type) {
             case 'stress_ball':
@@ -384,14 +390,14 @@ class GamePhysics {
     // מוות ונפילה
     handleDeath() {
         audio.playDeath();
-        this.screenShake = 18;
+        this.screenShake = 0; // ביטול רעידת מסך במוות
         
         // יצירת פיצוץ חלקיקים גדול בצבע של הדמות
         const charColor = this.player.charType === 'gamer_boy' ? '#39ff14' : '#ff007f';
-        particles.spawnCrunchExplosion(this.player.x + this.player.w / 2, this.level.height - 10, charColor);
+        particles.spawnCrunchExplosion(this.player.x + this.player.w / 2, this.checkpointY + this.player.h - 10, charColor);
 
-        // איפוס מיקום שחקן לתחילת המפה
-        this.initPlayer(this.level.startX, this.level.startY, this.player.charType);
+        // איפוס מיקום שחקן לנקודת השמירה האחרונה (הבלוק האחרון שעמד עליו)
+        this.initPlayer(this.checkpointX, this.checkpointY, this.player.charType);
         
         // הגברת מונה פסילות ב-HUD (באמצעות אירוע מותאם אישית)
         window.dispatchEvent(new CustomEvent('player-death'));
