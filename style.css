@@ -1,0 +1,502 @@
+/* הגדרות כלליות וצבעים */
+:root {
+    --bg-dark: #0a0b10;
+    --card-bg: rgba(18, 20, 32, 0.7);
+    --card-border: rgba(255, 255, 255, 0.08);
+    --text-main: #f3f4f6;
+    --text-muted: #9ca3af;
+    --color-primary: #8b5cf6; /* סגול */
+    --color-primary-glow: rgba(139, 92, 246, 0.4);
+    --color-secondary: #ec4899; /* ורוד */
+    --color-success: #10b981; /* ירוק */
+    --color-success-glow: rgba(16, 185, 129, 0.4);
+    --color-gold: #f59e0b; /* זהב */
+    --color-gold-glow: rgba(245, 158, 11, 0.4);
+    
+    --gamer-green: #39ff14;
+    --hawaii-pink: #ff007f;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Rubik', 'Outfit', sans-serif;
+    user-select: none;
+}
+
+body, html {
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* קונטיינר האפליקציה */
+#app-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    max-width: 100%;
+    max-height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: radial-gradient(circle at center, #1e1e38 0%, #080810 100%);
+}
+
+canvas {
+    display: block;
+    background-color: transparent;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    border-radius: 12px;
+    max-width: 100%;
+    max-height: 100%;
+    aspect-ratio: 16 / 9;
+}
+
+/* מסכי UI מעל המשחק */
+.ui-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(8, 8, 16, 0.75);
+    backdrop-filter: blur(8px);
+    z-index: 10;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.ui-overlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* כרטיסיית תפריטים - Glassmorphism */
+.menu-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    padding: 2.5rem;
+    width: 90%;
+    max-width: 800px;
+    text-align: center;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    animation: scaleUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes scaleUp {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.game-title {
+    font-size: 3rem;
+    font-weight: 900;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, #a78bfa 0%, #f472b6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 15px var(--color-primary-glow));
+}
+
+.game-title span {
+    font-weight: 300;
+}
+
+.game-subtitle {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    max-width: 600px;
+    line-height: 1.6;
+}
+
+.section-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #e5e7eb;
+    margin-top: 0.5rem;
+}
+
+/* גריד בחירת דמויות */
+.character-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    width: 100%;
+    margin: 1rem 0;
+}
+
+.char-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 2px solid rgba(255, 255, 255, 0.05);
+    border-radius: 18px;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.8rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.char-card:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.char-card.active {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 25px rgba(139, 92, 246, 0.3);
+}
+
+/* עיצוב אווטארים (בסגנון רובלוקס דל קלוריות) */
+.char-preview-container {
+    width: 120px;
+    height: 120px;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.4) 100%);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+}
+
+.char-avatar {
+    width: 60px;
+    height: 80px;
+    position: relative;
+}
+
+/* ייצוג ילד גיימינג ב-CSS */
+.char-avatar.boy {
+    background: #222;
+    border-radius: 4px;
+    /* קפוצ'ון */
+    background: linear-gradient(to bottom, #111 30%, #333 100%);
+    border: 1px solid var(--gamer-green);
+}
+.char-avatar.boy::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 15px;
+    width: 30px;
+    height: 25px;
+    background: #e0ac69; /* עור */
+    border-radius: 4px;
+}
+.char-avatar.boy .headphones {
+    position: absolute;
+    top: -12px;
+    left: 8px;
+    width: 44px;
+    height: 25px;
+    border: 4px solid var(--gamer-green);
+    border-bottom: none;
+    border-radius: 20px 20px 0 0;
+}
+.char-avatar.boy .headphones::before, .char-avatar.boy .headphones::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    width: 8px;
+    height: 10px;
+    background: var(--gamer-green);
+    border-radius: 3px;
+}
+.char-avatar.boy .headphones::before { left: -6px; }
+.char-avatar.boy .headphones::after { right: -6px; }
+
+.char-avatar.boy .sunglasses {
+    position: absolute;
+    top: -2px;
+    left: 13px;
+    width: 34px;
+    height: 8px;
+    background: #000;
+    border-radius: 2px;
+    border-bottom: 2px solid var(--gamer-green);
+}
+
+/* ייצוג בת הוואי ב-CSS */
+.char-avatar.girl {
+    background: #257;
+    border-radius: 4px;
+    background: linear-gradient(to bottom, #ff007f 0%, #ff5e62 100%);
+}
+.char-avatar.girl::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 15px;
+    width: 30px;
+    height: 25px;
+    background: #c68642; /* עור שזוף */
+    border-radius: 4px;
+}
+.char-avatar.girl .flower-crown {
+    position: absolute;
+    top: -14px;
+    left: 12px;
+    width: 36px;
+    height: 8px;
+    display: flex;
+    justify-content: space-between;
+}
+.char-avatar.girl .flower-crown::before, 
+.char-avatar.girl .flower-crown::after, 
+.char-avatar.girl .flower-crown::shadow {
+    content: '🌸';
+    font-size: 8px;
+}
+.char-avatar.girl .surfboard {
+    position: absolute;
+    right: -18px;
+    top: 5px;
+    width: 16px;
+    height: 70px;
+    background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+    border-radius: 50% 50% 10px 10px;
+    transform: rotate(15deg);
+    border: 1px solid white;
+}
+
+.char-card h3 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.char-card p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.4;
+}
+
+.badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+.badge-green {
+    background: rgba(57, 255, 20, 0.15);
+    color: var(--gamer-green);
+    border: 1px solid rgba(57, 255, 20, 0.3);
+}
+.badge-pink {
+    background: rgba(255, 0, 127, 0.15);
+    color: var(--hawaii-pink);
+    border: 1px solid rgba(255, 0, 127, 0.3);
+}
+
+.controls-info {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 0.8rem 1.2rem;
+    width: 100%;
+}
+.controls-info h3 {
+    font-size: 0.95rem;
+    color: #e5e7eb;
+    margin-bottom: 0.3rem;
+    font-weight: 700;
+}
+.controls-info p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* כפתורים */
+.btn {
+    padding: 0.9rem 2.5rem;
+    border-radius: 14px;
+    border: none;
+    font-size: 1.15rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.btn:active {
+    transform: scale(0.97);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--color-primary) 0%, #7c3aed 100%);
+    color: #fff;
+}
+.btn-primary:hover {
+    box-shadow: 0 0 25px var(--color-primary-glow);
+    transform: translateY(-2px);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, var(--color-success) 0%, #059669 100%);
+    color: #fff;
+}
+.btn-success:hover {
+    box-shadow: 0 0 25px var(--color-success-glow);
+    transform: translateY(-2px);
+}
+
+/* ממשק HUD עליון */
+#game-hud {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+    background: rgba(10, 11, 16, 0.6);
+    border: 1px solid var(--card-border);
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
+    z-index: 5;
+    pointer-events: auto;
+    direction: rtl;
+}
+
+#game-hud.hidden {
+    display: none;
+}
+
+.hud-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.hud-item .label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+.hud-item .value {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #fff;
+}
+
+/* מד ההתקדמות */
+.progress-container {
+    flex-grow: 1;
+    max-width: 40%;
+    margin: 0 2rem;
+}
+
+.progress-bar-bg {
+    width: 100%;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-bar-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+    border-radius: 6px;
+    transition: width 0.1s linear;
+    box-shadow: 0 0 10px var(--color-primary-glow);
+}
+
+.hud-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s ease;
+    margin-right: 0.5rem;
+}
+
+.hud-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* מסכי ניצחון וסיום */
+.glass-glow {
+    border-color: var(--color-success);
+    box-shadow: 0 0 40px var(--color-success-glow);
+}
+
+.glass-glow-gold {
+    border-color: var(--color-gold);
+    box-shadow: 0 0 50px var(--color-gold-glow);
+}
+
+.victory-title {
+    font-size: 2.2rem;
+    font-weight: 900;
+    color: var(--color-success);
+}
+
+.gold-text {
+    color: var(--color-gold) !important;
+    background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.victory-message {
+    color: #e5e7eb;
+    font-size: 1.1rem;
+}
+
+.victory-stats {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+    color: var(--text-muted);
+}
+
+.victory-stats strong {
+    color: #fff;
+    font-size: 1.3rem;
+}

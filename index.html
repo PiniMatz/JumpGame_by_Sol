@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Squishy Parkour - פארקור מעיך ומספק!</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Rubik:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app-container">
+        <!-- מסך פתיחה ובחירת דמויות -->
+        <div id="start-screen" class="ui-overlay">
+            <div class="menu-card">
+                <h1 class="game-title">SQUISHY <span>PARKOUR</span></h1>
+                <p class="game-subtitle">משחק הפארקור הכי מעיך ומספק בדפדפן! דלגו מעל פצפצים, פחיות וכדורי לחץ</p>
+                
+                <h2 class="section-title">בחרו דמות:</h2>
+                <div class="character-grid">
+                    <!-- דמות: ילד גיימינג -->
+                    <div class="char-card active" data-char="gamer_boy" id="card-gamer_boy">
+                        <div class="char-preview-container">
+                            <div class="char-avatar boy">
+                                <div class="headphones"></div>
+                                <div class="sunglasses"></div>
+                                <div class="hoodie"></div>
+                            </div>
+                        </div>
+                        <h3>ילד גיימינג (Gaming Boy)</h3>
+                        <p>מגיע עם אוזניות זוהרות ושובל חלקיקי קוד מטריקס ירוק.</p>
+                        <span class="badge badge-green">מהירות מוגברת</span>
+                    </div>
+
+                    <!-- דמות: בת הוואי -->
+                    <div class="char-card" data-char="hawaii_girl" id="card-hawaii_girl">
+                        <div class="char-preview-container">
+                            <div class="char-avatar girl">
+                                <div class="flower-crown"></div>
+                                <div class="surfboard"></div>
+                                <div class="grass-skirt"></div>
+                            </div>
+                        </div>
+                        <h3>בת הוואי (Hawaii Girl)</h3>
+                        <p>מגיעה עם כתר פרחים, גלשן על הגב ושובל חלקיקי פרחים טרופיים.</p>
+                        <span class="badge badge-pink">קפיצה מרחפת</span>
+                    </div>
+                </div>
+
+                <div class="controls-info">
+                    <h3>איך משחקים?</h3>
+                    <p>⌨️ <strong>חצים ימינה/שמאלה</strong> - תנועה | ⬆️ <strong>חץ למעלה / רווח</strong> - קפיצה (לחצו פעמיים לקפיצה כפולה!) | ⬇️ <strong>חץ למטה</strong> - מכה חזקה למטה</p>
+                </div>
+
+                <button id="btn-start-game" class="btn btn-primary">בואו נתחיל לקפוץ! 🚀</button>
+            </div>
+        </div>
+
+        <!-- תצוגת משחק עליונה (HUD) -->
+        <div id="game-hud" class="hidden">
+            <div class="hud-item world-indicator">
+                <span class="label">עולם:</span>
+                <span id="hud-world-name" class="value">גני המעיכות</span>
+            </div>
+            
+            <div class="hud-item progress-container">
+                <span class="label">התקדמות:</span>
+                <div class="progress-bar-bg">
+                    <div id="hud-progress-bar" class="progress-bar-fill"></div>
+                </div>
+            </div>
+
+            <div class="hud-item deaths-indicator">
+                <span class="label">פסילות:</span>
+                <span id="hud-deaths-count" class="value">0</span>
+            </div>
+
+            <button id="btn-mute" class="hud-btn" title="השתק/הפעל קול">🔊</button>
+            <button id="btn-reset" class="hud-btn" title="אפס שלב">🔄</button>
+        </div>
+
+        <!-- מסך מעבר שלב / ניצחון -->
+        <div id="level-end-screen" class="ui-overlay hidden">
+            <div class="menu-card glass-glow">
+                <h2 id="end-title" class="victory-title">השלב הושלם! 🎉</h2>
+                <p id="end-message" class="victory-message">המעיכות היו סופר מספקות.</p>
+                <div class="victory-stats">
+                    <div>פסילות בשלב זה: <strong id="stat-deaths">0</strong></div>
+                </div>
+                <button id="btn-next-level" class="btn btn-success">לעולם הבא ➡️</button>
+            </div>
+        </div>
+
+        <!-- מסך סיום המשחק הכללי -->
+        <div id="game-win-screen" class="ui-overlay hidden">
+            <div class="menu-card glass-glow-gold">
+                <h1 class="victory-title gold-text">🏆 אלוף המעיכות! 🏆</h1>
+                <p class="victory-message">עברת את כל העולמות בהצלחה ומעכת את כל מה שעמד בדרכך!</p>
+                <div class="victory-stats">
+                    <div>סך כל הפסילות: <strong id="total-stat-deaths">0</strong></div>
+                </div>
+                <button id="btn-restart-all" class="btn btn-primary">לשחק שוב 🔄</button>
+            </div>
+        </div>
+
+        <!-- קנבס המשחק -->
+        <canvas id="game-canvas"></canvas>
+    </div>
+
+    <!-- ייבוא קובצי המשחק -->
+    <script src="audio.js"></script>
+    <script src="particles.js"></script>
+    <script src="levels.js"></script>
+    <script src="physics.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
