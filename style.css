@@ -500,3 +500,84 @@ canvas {
     color: #fff;
     font-size: 1.3rem;
 }
+
+/* בקרת מגע לניידים */
+#mobile-controls {
+    position: absolute;
+    bottom: 25px;
+    left: 0;
+    right: 0;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 35px;
+    box-sizing: border-box;
+    z-index: 100;
+    pointer-events: none;
+    direction: ltr; /* שמירה על כיוון כפתורים קלאסי: תנועה בשמאל, פעולות בימין */
+}
+
+#mobile-controls.hidden {
+    display: none !important;
+}
+
+.control-group {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    pointer-events: none;
+}
+
+.control-btn {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1.5px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 24px;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25);
+    pointer-events: auto;
+    transition: all 0.15s cubic-bezier(0.25, 0.8, 0.25, 1);
+    touch-action: manipulation;
+}
+
+.control-btn:active {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: scale(0.88);
+    color: #ffffff;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.25);
+}
+
+/* הדגשה לכפתורים לפי דמות שנבחרה */
+body.gamer-selected .control-btn:active {
+    border-color: var(--gamer-green);
+    box-shadow: 0 0 20px rgba(57, 255, 20, 0.4);
+}
+
+body.hawaii-selected .control-btn:active {
+    border-color: var(--hawaii-pink);
+    box-shadow: 0 0 20px rgba(255, 0, 127, 0.4);
+}
+
+/* התאמה לרזולוציות קטנות */
+@media (max-height: 450px) {
+    .control-btn {
+        width: 58px;
+        height: 58px;
+        font-size: 20px;
+    }
+    #mobile-controls {
+        bottom: 15px;
+        padding: 0 20px;
+    }
+}
+

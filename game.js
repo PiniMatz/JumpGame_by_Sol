@@ -38,7 +38,11 @@ class Game {
             speed: 0.05 + Math.random() * 0.1
         }));
 
+        // זיהוי מכשיר מגע
+        this.isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.matchMedia('(pointer: coarse)').matches;
+
         this.initDOM();
+        this.initTouchControls();
     }
 
     // קישור רכיבי UI
@@ -164,6 +168,71 @@ class Game {
         this.run();
     }
 
+    // אתחול כפתורי מגע לניידים
+    initTouchControls() {
+        if (!this.isTouchDevice) return;
+
+        // הוספת קלאס לגוף המציין שהמשתמש בנייד מגע
+        document.body.classList.add('touch-device');
+
+        const btnLeft = document.getElementById('btn-left');
+        const btnRight = document.getElementById('btn-right');
+        const btnJump = document.getElementById('btn-jump');
+        const btnSlam = document.getElementById('btn-slam');
+
+        if (!btnLeft || !btnRight || !btnJump || !btnSlam) return;
+
+        const bindTouch = (element, keyName, onDown) => {
+            element.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (this.gameState !== 'PLAYING') return;
+                this.keys[keyName] = true;
+                if (onDown) onDown();
+            }, { passive: false });
+
+            element.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.keys[keyName] = false;
+            }, { passive: false });
+
+            element.addEventListener('touchcancel', (e) => {
+                e.preventDefault();
+                this.keys[keyName] = false;
+            }, { passive: false });
+        };
+
+        bindTouch(btnLeft, 'ArrowLeft');
+        bindTouch(btnRight, 'ArrowRight');
+        bindTouch(btnJump, 'ArrowUp', () => {
+            physics.jump();
+        });
+        bindTouch(btnSlam, 'ArrowDown', () => {
+            physics.slamDown();
+        });
+    }
+
+    // עדכון תצוגת בקרת המגע לפי מצב המשחק והדמות שנבחרה
+    updateControlsUI() {
+        const mobileControls = document.getElementById('mobile-controls');
+        if (!mobileControls) return;
+
+        const shouldShow = this.isTouchDevice && this.gameState === 'PLAYING';
+        if (shouldShow) {
+            mobileControls.classList.remove('hidden');
+        } else {
+            mobileControls.classList.add('hidden');
+        }
+
+        // עדכון קלאסים של הדמות הנבחרת לצורך עיצוב כפתורי המגע
+        if (this.selectedChar === 'gamer_boy') {
+            document.body.classList.add('gamer-selected');
+            document.body.classList.remove('hawaii-selected');
+        } else {
+            document.body.classList.add('hawaii-selected');
+            document.body.classList.remove('gamer-selected');
+        }
+    }
+
     // טעינת שלב
     loadLevel(index) {
         this.currentLevelIdx = index;
@@ -194,6 +263,8 @@ class Game {
 
     // עדכון לוגיקה בכל פריים
     update() {
+        this.updateControlsUI();
+        
         if (this.gameState !== 'PLAYING') {
             // אנימציות רקע בתפריטים ועננים
             this.portalRotation += 0.01;
@@ -398,174 +469,468 @@ class Game {
                 this.ctx.stroke();
             } 
             else if (plat.type === 'stress_ball') {
-                // כדור לחץ: אליפסה מעיכה ומתרחבת בהתאם ל-squishY
                 const squish = plat.squishY;
                 const currentH = plat.h * squish;
-                const currentW = plat.w * (1 + (1 - squish) * 0.7); // גדל לרוחב ככל שנמעך
-                const deltaW = currentW - plat.w;
+                const currentW = plat.w * (1 + (1 - squish) * 0.7);
                 
-                const grad = this.ctx.createRadialGradient(
-                    rx + plat.w/2, plat.y + currentH/2 - 10, 5, 
-                    rx + plat.w/2, plat.y + currentH/2, currentW/2
-                );
-                // סטרס בול ורוד או סגול
-                grad.addColorStop(0, '#f472b6');
-                grad.addColorStop(0.5, '#ec4899');
-                grad.addColorStop(1, '#be185d');
-                
-                this.ctx.fillStyle = grad;
-                this.ctx.beginPath();
-                // ציור אליפסה מהמרכז התחתון כדי שהרצפה תישאר במקום
-                this.ctx.ellipse(
-                    rx + plat.w/2, 
-                    plat.y + plat.h - currentH/2, 
-                    currentW/2, 
-                    currentH/2, 
-                    0, 0, Math.PI * 2
-                );
-                this.ctx.fill();
-                
-                // קו זוהר מעודן וטקסטורה של כדור
-                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-                this.ctx.lineWidth = 2;
-                this.ctx.stroke();
+                this.ctx.save();
+                this.ctx.translate(rx + plat.w / 2, plat.y + plat.h); // Bottom center reference
+                this.ctx.scale(currentW / plat.w, squish);
+
+                if (plat.label && (plat.label.includes("ברווז") || plat.label.includes("duck"))) {
+                    // ציור ברווז גומי צהוב אמיתי ומתוק!
+                    // גוף הברווז
+                    this.ctx.fillStyle = '#facc15'; // צהוב בהיר
+                    this.ctx.beginPath();
+                    this.ctx.ellipse(0, -plat.h * 0.35, plat.w * 0.44, plat.h * 0.35, 0, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // כנף
+                    this.ctx.fillStyle = '#eab308'; // צהוב כהה
+                    this.ctx.beginPath();
+                    this.ctx.ellipse(-plat.w * 0.1, -plat.h * 0.35, plat.w * 0.18, plat.h * 0.14, -0.2, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // זנב קטנטן
+                    this.ctx.fillStyle = '#facc15';
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(-plat.w * 0.4, -plat.h * 0.45);
+                    this.ctx.quadraticCurveTo(-plat.w * 0.52, -plat.h * 0.65, -plat.w * 0.48, -plat.h * 0.65);
+                    this.ctx.quadraticCurveTo(-plat.w * 0.35, -plat.h * 0.5, -plat.w * 0.3, -plat.h * 0.4);
+                    this.ctx.fill();
+                    
+                    // צוואר וראש
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(plat.w * 0.1, -plat.h * 0.5);
+                    this.ctx.quadraticCurveTo(plat.w * 0.22, -plat.h * 0.55, plat.w * 0.22, -plat.h * 0.65);
+                    this.ctx.lineTo(plat.w * 0.05, -plat.h * 0.65);
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                    
+                    this.ctx.beginPath();
+                    this.ctx.arc(plat.w * 0.22, -plat.h * 0.68, plat.h * 0.22, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // מקור כתום בולט
+                    this.ctx.fillStyle = '#f97316';
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(plat.w * 0.42, -plat.h * 0.72);
+                    this.ctx.lineTo(plat.w * 0.62, -plat.h * 0.66);
+                    this.ctx.lineTo(plat.w * 0.42, -plat.h * 0.60);
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                    
+                    // עין עם השתקפות
+                    this.ctx.fillStyle = '#000000';
+                    this.ctx.beginPath();
+                    this.ctx.arc(plat.w * 0.26, -plat.h * 0.73, 3.5, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.beginPath();
+                    this.ctx.arc(plat.w * 0.28, -plat.h * 0.75, 1.2, 0, Math.PI * 2);
+                    this.ctx.fill();
+                } else {
+                    // כדור גומי / לחץ מונפש תלת-ממדי
+                    const ballGrad = this.ctx.createRadialGradient(-plat.w * 0.1, -plat.h * 0.6, 5, 0, -plat.h * 0.5, plat.w / 2);
+                    if (plat.label && plat.label.includes("כדור גומי")) {
+                        ballGrad.addColorStop(0, '#60a5fa');
+                        ballGrad.addColorStop(0.5, '#2563eb');
+                        ballGrad.addColorStop(1, '#1e3a8a');
+                    } else {
+                        ballGrad.addColorStop(0, '#f472b6');
+                        ballGrad.addColorStop(0.5, '#db2777');
+                        ballGrad.addColorStop(1, '#831843');
+                    }
+                    
+                    this.ctx.fillStyle = ballGrad;
+                    this.ctx.beginPath();
+                    this.ctx.arc(0, -plat.h / 2, plat.w / 2, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // קו ברק לבן
+                    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                    this.ctx.lineWidth = 3;
+                    this.ctx.beginPath();
+                    this.ctx.arc(0, -plat.h / 2, plat.w / 2 - 4, 1.2 * Math.PI, 1.8 * Math.PI);
+                    this.ctx.stroke();
+                    
+                    // פרצוף סמיילי חמוד שנמעך עם הכדור
+                    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+                    this.ctx.beginPath();
+                    this.ctx.arc(-plat.w * 0.13, -plat.h * 0.55, 3.2, 0, Math.PI * 2);
+                    this.ctx.arc(plat.w * 0.13, -plat.h * 0.55, 3.2, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.beginPath();
+                    this.ctx.arc(0, -plat.h * 0.45, 8, 0.1 * Math.PI, 0.9 * Math.PI);
+                    this.ctx.stroke();
+                }
+                this.ctx.restore();
             } 
             else if (plat.type === 'jelly') {
-                // קוביית ג'לי: גבול עליון רוטט בגל סינוס מונפש
-                const grad = this.ctx.createLinearGradient(rx, plat.y, rx, plat.y + plat.h);
-                grad.addColorStop(0, 'rgba(217, 70, 239, 0.85)'); // סגול ג'לי שקוף למחצה
-                grad.addColorStop(1, 'rgba(134, 25, 143, 0.95)');
-                
-                this.ctx.fillStyle = grad;
-                this.ctx.strokeStyle = '#f472b6';
-                this.ctx.lineWidth = 3;
-                
-                // ציור גל רוטט בבסיס העליון
-                this.ctx.beginPath();
-                this.ctx.moveTo(rx, plat.y + plat.h);
-                
-                // ציור דופן עליונה רוטטת
-                const steps = 12;
-                for (let i = 0; i <= steps; i++) {
-                    const px = rx + (i / steps) * plat.w;
-                    // גל סינוס המושפע מזווית הרטט ועוצמת הרטט
-                    const wobble = Math.sin((i / steps) * Math.PI * 2 + plat.wobbleAngle) * plat.wobbleAmp;
-                    const py = plat.y + wobble;
-                    this.ctx.lineTo(px, py);
+                if (plat.label === "ארגז קרטון") {
+                    // קופסת קרטון רוטטת ומגניבה במקום ג'לי!
+                    const wobble = Math.sin(plat.wobbleAngle) * plat.wobbleAmp;
+                    this.ctx.save();
+                    
+                    this.ctx.fillStyle = '#d97706'; // חום קרטון
+                    this.ctx.strokeStyle = '#78350f';
+                    this.ctx.lineWidth = 3;
+                    
+                    // ציור גוף הקרטון (מלבן נוטה לפי זווית הרטט)
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(rx, plat.y + plat.h);
+                    this.ctx.lineTo(rx + wobble, plat.y);
+                    this.ctx.lineTo(rx + plat.w + wobble, plat.y);
+                    this.ctx.lineTo(rx + plat.w, plat.y + plat.h);
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                    this.ctx.stroke();
+                    
+                    // סרט הדבקה (מסקנטייפ) במרכז
+                    this.ctx.fillStyle = 'rgba(78, 53, 15, 0.5)';
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(rx + plat.w/2 - 8 + wobble, plat.y);
+                    this.ctx.lineTo(rx + plat.w/2 + 8 + wobble, plat.y);
+                    this.ctx.lineTo(rx + plat.w/2 + 8, plat.y + plat.h);
+                    this.ctx.lineTo(rx + plat.w/2 - 8, plat.y + plat.h);
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                    
+                    // קווי פתיחה של קרטון
+                    this.ctx.strokeStyle = '#451a03';
+                    this.ctx.lineWidth = 1.5;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(rx + wobble, plat.y + 12);
+                    this.ctx.lineTo(rx + plat.w + wobble, plat.y + 12);
+                    this.ctx.stroke();
+                    
+                    // לוגו שביר/כוס יין קטן על הקרטון
+                    this.ctx.strokeStyle = '#78350f';
+                    this.ctx.lineWidth = 1.5;
+                    const stampX = rx + plat.w * 0.2 + wobble * 0.6;
+                    const stampY = plat.y + plat.h * 0.4;
+                    this.ctx.strokeRect(stampX, stampY, 15, 20);
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(stampX + 3, stampY + 4);
+                    this.ctx.lineTo(stampX + 12, stampY + 4);
+                    this.ctx.lineTo(stampX + 12, stampY + 11);
+                    this.ctx.lineTo(stampX + 7.5, stampY + 15);
+                    this.ctx.lineTo(stampX + 3, stampY + 11);
+                    this.ctx.closePath();
+                    this.ctx.moveTo(stampX + 7.5, stampY + 15);
+                    this.ctx.lineTo(stampX + 7.5, stampY + 18);
+                    this.ctx.moveTo(stampX + 4, stampY + 18);
+                    this.ctx.lineTo(stampX + 11, stampY + 18);
+                    this.ctx.stroke();
+                    
+                    this.ctx.restore();
+                } else {
+                    // ג'לי רוטט עם פנים חמודות ודובדבן מבריק בראשו
+                    const wobble = Math.sin(plat.wobbleAngle) * plat.wobbleAmp;
+                    
+                    const grad = this.ctx.createLinearGradient(rx, plat.y, rx, plat.y + plat.h);
+                    if (plat.label && plat.label.includes("צהוב")) {
+                        grad.addColorStop(0, 'rgba(253, 224, 71, 0.85)');
+                        grad.addColorStop(1, 'rgba(234, 179, 8, 0.95)');
+                    } else {
+                        grad.addColorStop(0, 'rgba(232, 121, 249, 0.85)');
+                        grad.addColorStop(1, 'rgba(192, 38, 211, 0.95)');
+                    }
+                    
+                    this.ctx.fillStyle = grad;
+                    this.ctx.strokeStyle = '#f472b6';
+                    this.ctx.lineWidth = 3;
+                    
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(rx + 8, plat.y + plat.h);
+                    
+                    const steps = 14;
+                    for (let i = 0; i <= steps; i++) {
+                        const ratio = i / steps;
+                        const px = rx + 14 + ratio * (plat.w - 28) + wobble * Math.sin(ratio * Math.PI);
+                        const surfaceWobble = Math.cos(ratio * Math.PI * 2 + plat.wobbleAngle) * (plat.wobbleAmp * 0.6);
+                        const py = plat.y + surfaceWobble;
+                        this.ctx.lineTo(px, py);
+                    }
+                    
+                    this.ctx.lineTo(rx + plat.w - 8, plat.y + plat.h);
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                    this.ctx.stroke();
+                    
+                    // פס ברק לבן מבריק
+                    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+                    this.ctx.lineWidth = 2.5;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(rx + 16 + wobble, plat.y + 8);
+                    this.ctx.quadraticCurveTo(rx + 24 + wobble, plat.y + 4, rx + 40 + wobble, plat.y + 4);
+                    this.ctx.stroke();
+                    
+                    // עיניים שעוקבות או זזות
+                    const midX = rx + plat.w / 2 + wobble * 0.5;
+                    const midY = plat.y + plat.h / 2;
+                    
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.beginPath();
+                    this.ctx.arc(midX - 12, midY - 4, 6, 0, Math.PI * 2);
+                    this.ctx.arc(midX + 12, midY - 4, 6, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    this.ctx.fillStyle = '#000000';
+                    this.ctx.beginPath();
+                    this.ctx.arc(midX - 12, midY - 4, 2.8, 0, Math.PI * 2);
+                    this.ctx.arc(midX + 12, midY - 4, 2.8, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // פה מחייך
+                    this.ctx.strokeStyle = '#000000';
+                    this.ctx.lineWidth = 1.8;
+                    this.ctx.beginPath();
+                    this.ctx.arc(midX, midY + 4, 4, 0, Math.PI);
+                    this.ctx.stroke();
+                    
+                    // דובדבן בראשו של הג'לי
+                    const cherryX = midX;
+                    const cherryY = plat.y - 4;
+                    this.ctx.fillStyle = '#ef4444';
+                    this.ctx.beginPath();
+                    this.ctx.arc(cherryX, cherryY, 6.5, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // גבעול ירוק
+                    this.ctx.strokeStyle = '#15803d';
+                    this.ctx.lineWidth = 1.5;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(cherryX, cherryY - 4);
+                    this.ctx.quadraticCurveTo(cherryX + 8, cherryY - 14, cherryX + 4, cherryY - 18);
+                    this.ctx.stroke();
                 }
-                
-                this.ctx.lineTo(rx + plat.w, plat.y + plat.h);
-                this.ctx.closePath();
-                this.ctx.fill();
-                this.ctx.stroke();
             } 
             else if (plat.type === 'soda_can') {
-                // פחית שתייה / בקבוק פלסטיק
                 const py = plat.currentY;
                 const ph = plat.currentH;
                 const pw = plat.w;
                 
-                const grad = this.ctx.createLinearGradient(rx, py, rx + pw, py);
+                this.ctx.save();
+                
                 if (plat.label === 'בקבוק מים') {
-                    // בקבוק מים כחול
-                    grad.addColorStop(0, '#bae6fd');
-                    grad.addColorStop(0.3, '#38bdf8');
-                    grad.addColorStop(0.7, '#0284c7');
-                    grad.addColorStop(1, '#0c4a6e');
+                    // בקבוק מים מפורט:
+                    if (plat.crushStage === 0) {
+                        const bottleGrad = this.ctx.createLinearGradient(rx, py, rx + pw, py);
+                        bottleGrad.addColorStop(0, 'rgba(186, 230, 253, 0.75)');
+                        bottleGrad.addColorStop(0.4, 'rgba(224, 242, 254, 0.85)');
+                        bottleGrad.addColorStop(0.8, 'rgba(56, 189, 248, 0.75)');
+                        bottleGrad.addColorStop(1, 'rgba(12, 74, 110, 0.85)');
+                        
+                        this.ctx.fillStyle = bottleGrad;
+                        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                        this.ctx.lineWidth = 1.5;
+                        
+                        // צורה מפותלת של בקבוק פלסטיק
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(rx + pw * 0.3, py);
+                        this.ctx.lineTo(rx + pw * 0.7, py);
+                        this.ctx.lineTo(rx + pw * 0.75, py + ph * 0.15);
+                        this.ctx.lineTo(rx + pw * 0.9, py + ph * 0.28);
+                        this.ctx.lineTo(rx + pw * 0.9, py + ph * 0.95);
+                        this.ctx.quadraticCurveTo(rx + pw * 0.9, py + ph, rx + pw * 0.75, py + ph);
+                        this.ctx.lineTo(rx + pw * 0.25, py + ph);
+                        this.ctx.quadraticCurveTo(rx + pw * 0.1, py + ph, rx + pw * 0.1, py + ph * 0.95);
+                        this.ctx.lineTo(rx + pw * 0.1, py + ph * 0.28);
+                        this.ctx.lineTo(rx + pw * 0.25, py + ph * 0.15);
+                        this.ctx.closePath();
+                        this.ctx.fill();
+                        this.ctx.stroke();
+                        
+                        // פקק כחול
+                        this.ctx.fillStyle = '#0284c7';
+                        this.ctx.fillRect(rx + pw * 0.3, py - 6, pw * 0.4, 6);
+                        
+                        // תווית נייר כחולה
+                        this.ctx.fillStyle = '#0369a1';
+                        this.ctx.fillRect(rx + pw * 0.1, py + ph * 0.4, pw * 0.8, ph * 0.22);
+                        this.ctx.fillStyle = '#ffffff';
+                        this.ctx.font = 'bold 9px sans-serif';
+                        this.ctx.textAlign = 'center';
+                        this.ctx.fillText("PURE", rx + pw/2, py + ph * 0.55);
+                        
+                        // חריצים רוחביים בבקבוק
+                        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+                        this.ctx.lineWidth = 1.5;
+                        for (let i = 0; i < 3; i++) {
+                            const ry_line = py + ph * 0.68 + i * 8;
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(rx + pw * 0.12, ry_line);
+                            this.ctx.lineTo(rx + pw * 0.88, ry_line);
+                            this.ctx.stroke();
+                        }
+                    } 
+                    else if (plat.crushStage === 1) {
+                        // בקבוק חצי מעוך
+                        this.ctx.fillStyle = 'rgba(56, 189, 248, 0.6)';
+                        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                        this.ctx.lineWidth = 1.5;
+                        
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(rx + pw * 0.2, py);
+                        this.ctx.lineTo(rx + pw * 0.8, py);
+                        this.ctx.lineTo(rx + pw - 4, py + ph * 0.3);
+                        this.ctx.lineTo(rx + pw - 12, py + ph * 0.55);
+                        this.ctx.lineTo(rx + pw, py + ph * 0.8);
+                        this.ctx.lineTo(rx + pw - 4, py + ph);
+                        this.ctx.lineTo(rx + 4, py + ph);
+                        this.ctx.lineTo(rx, py + ph * 0.8);
+                        this.ctx.lineTo(rx + 12, py + ph * 0.55);
+                        this.ctx.lineTo(rx + 4, py + ph * 0.3);
+                        this.ctx.closePath();
+                        this.ctx.fill();
+                        this.ctx.stroke();
+                    } 
+                    else {
+                        // בקבוק פלסטיק מעוך לגמרי
+                        this.ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
+                        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                        this.ctx.lineWidth = 1;
+                        this.ctx.beginPath();
+                        this.ctx.ellipse(rx + pw/2, py + ph/2, pw * 0.6, ph * 0.5, 0.1, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        this.ctx.stroke();
+                    }
                 } else {
-                    // פחית קולה אדומה
+                    // פחית קולה מפורטת:
+                    const grad = this.ctx.createLinearGradient(rx, py, rx + pw, py);
                     grad.addColorStop(0, '#fca5a5');
                     grad.addColorStop(0.3, '#ef4444');
                     grad.addColorStop(0.7, '#b91c1c');
                     grad.addColorStop(1, '#7f1d1d');
+                    
+                    if (plat.crushStage === 0) {
+                        // כיסוי עליון כסוף
+                        this.ctx.fillStyle = '#e2e8f0';
+                        this.ctx.beginPath();
+                        this.ctx.ellipse(rx + pw/2, py, pw/2, 4, 0, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        
+                        // גליל פחית אדום
+                        this.ctx.fillStyle = grad;
+                        this.ctx.fillRect(rx, py, pw, ph);
+                        
+                        // קו גלי לבן קלאסי במרכז
+                        this.ctx.fillStyle = '#ffffff';
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(rx, py + ph * 0.45);
+                        this.ctx.quadraticCurveTo(rx + pw * 0.4, py + ph * 0.35, rx + pw * 0.5, py + ph * 0.5);
+                        this.ctx.quadraticCurveTo(rx + pw * 0.6, py + ph * 0.65, rx + pw, py + ph * 0.5);
+                        this.ctx.lineTo(rx + pw, py + ph * 0.65);
+                        this.ctx.quadraticCurveTo(rx + pw * 0.6, py + ph * 0.8, rx + pw * 0.5, py + ph * 0.65);
+                        this.ctx.quadraticCurveTo(rx + pw * 0.4, py + ph * 0.5, rx, py + ph * 0.6);
+                        this.ctx.closePath();
+                        this.ctx.fill();
+                        
+                        // טבעת פתיחה על המכסה
+                        this.ctx.strokeStyle = '#94a3b8';
+                        this.ctx.lineWidth = 1.5;
+                        this.ctx.beginPath();
+                        this.ctx.arc(rx + pw/2, py - 1, 3, 0, Math.PI*2);
+                        this.ctx.stroke();
+                        
+                        // בסיס תחתון כסוף
+                        this.ctx.fillStyle = '#e2e8f0';
+                        this.ctx.beginPath();
+                        this.ctx.ellipse(rx + pw/2, py + ph, pw/2, 3, 0, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    } 
+                    else if (plat.crushStage === 1) {
+                        // פחית מעוכה גלית
+                        this.ctx.fillStyle = grad;
+                        this.ctx.strokeStyle = '#94a3b8';
+                        this.ctx.lineWidth = 1.5;
+                        
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(rx, py);
+                        this.ctx.lineTo(rx + pw, py);
+                        this.ctx.lineTo(rx + pw - 8, py + ph * 0.3);
+                        this.ctx.lineTo(rx + pw, py + ph * 0.5);
+                        this.ctx.lineTo(rx + pw - 6, py + ph * 0.7);
+                        this.ctx.lineTo(rx + pw, py + ph);
+                        this.ctx.lineTo(rx, py + ph);
+                        this.ctx.lineTo(rx + 6, py + ph * 0.7);
+                        this.ctx.lineTo(rx, py + ph * 0.5);
+                        this.ctx.lineTo(rx + 8, py + ph * 0.3);
+                        this.ctx.closePath();
+                        this.ctx.fill();
+                        this.ctx.stroke();
+                    } 
+                    else {
+                        // פחית מעוכה לגמרי ושטוחה
+                        this.ctx.fillStyle = '#94a3b8';
+                        this.ctx.beginPath();
+                        this.ctx.ellipse(rx + pw/2, py + ph/2, pw * 0.55, ph * 0.5, 0, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        
+                        this.ctx.fillStyle = '#b91c1c';
+                        this.ctx.beginPath();
+                        this.ctx.ellipse(rx + pw/2, py + ph/2, pw * 0.35, ph * 0.35, 0.1, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
                 }
-                
-                this.ctx.fillStyle = grad;
-                this.ctx.strokeStyle = '#e2e8f0';
-                this.ctx.lineWidth = 1.5;
-                
-                if (plat.crushStage === 0) {
-                    // פחית/בקבוק רגיל (גליל יפה)
-                    this.drawRoundedRect(rx, py, pw, ph, 10, true, true);
-                    // פסים של עיצוב מותג
-                    this.ctx.fillStyle = '#ffffff';
-                    this.ctx.fillRect(rx, py + ph*0.4, pw, ph*0.15);
-                } 
-                else if (plat.crushStage === 1) {
-                    // חצי מעוך (קווים שבורים)
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(rx, py);
-                    this.ctx.lineTo(rx + pw, py);
-                    this.ctx.lineTo(rx + pw - 6, py + ph*0.35);
-                    this.ctx.lineTo(rx + pw, py + ph*0.5);
-                    this.ctx.lineTo(rx + pw - 4, py + ph*0.7);
-                    this.ctx.lineTo(rx + pw, py + ph);
-                    this.ctx.lineTo(rx, py + ph);
-                    this.ctx.lineTo(rx + 4, py + ph*0.7);
-                    this.ctx.lineTo(rx, py + ph*0.5);
-                    this.ctx.lineTo(rx + 6, py + ph*0.35);
-                    this.ctx.closePath();
-                    this.ctx.fill();
-                    this.ctx.stroke();
-                } 
-                else {
-                    // מעוך לחלוטין (שטוח ומעוות לגמרי)
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(rx - 8, py);
-                    this.ctx.lineTo(rx + pw + 8, py);
-                    this.ctx.lineTo(rx + pw + 4, py + ph);
-                    this.ctx.lineTo(rx - 4, py + ph);
-                    this.ctx.closePath();
-                    this.ctx.fill();
-                    this.ctx.stroke();
-                }
-                
-                // ציור פקק/טבעת פתיחה
-                if (plat.crushStage < 2) {
-                    this.ctx.fillStyle = '#94a3b8';
-                    this.ctx.fillRect(rx + pw/2 - 8, py - 4, 16, 4);
-                }
+                this.ctx.restore();
             } 
             else if (plat.type === 'bubble_wrap') {
-                // פצפצים: משטח פלסטיק ועליו בועות תלת-ממדיות
-                this.ctx.fillStyle = 'rgba(186, 230, 253, 0.25)'; // תכלת פלסטיקי שקוף
-                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-                this.ctx.lineWidth = 1;
+                // פצפצים בתצוגת תלת-ממד מבריקה
+                const bgGrad = this.ctx.createLinearGradient(rx, plat.y, rx, plat.y + plat.h);
+                bgGrad.addColorStop(0, 'rgba(224, 242, 254, 0.25)');
+                bgGrad.addColorStop(1, 'rgba(186, 230, 253, 0.45)');
+                this.ctx.fillStyle = bgGrad;
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+                this.ctx.lineWidth = 1.5;
+                
                 this.drawRoundedRect(rx, plat.y, plat.w, plat.h, 6, true, true);
                 
-                // ציור הבועות בנפרד
                 for (const bubble of plat.bubbles) {
                     const bx = bubble.x - this.cameraX;
                     const by = plat.y + plat.h / 2;
-                    const radius = 9;
-
+                    const r = 9;
+                    
                     if (!bubble.popped) {
-                        // בועה שלמה (גרדיאנט רדיאלי עם ברק לבן)
-                        const bubGrad = this.ctx.createRadialGradient(
-                            bx - 3, by - 3, 1, 
-                            bx, by, radius
-                        );
+                        // בועה שלמה מבריקה
+                        const bubGrad = this.ctx.createRadialGradient(bx - 3, by - 3, 1, bx, by, r);
                         bubGrad.addColorStop(0, '#ffffff');
-                        bubGrad.addColorStop(0.3, '#bae6fd');
-                        bubGrad.addColorStop(1, '#0284c7');
+                        bubGrad.addColorStop(0.3, 'rgba(186, 230, 253, 0.95)');
+                        bubGrad.addColorStop(0.85, 'rgba(14, 165, 233, 0.7)');
+                        bubGrad.addColorStop(1, 'rgba(3, 105, 161, 0.35)');
                         
                         this.ctx.fillStyle = bubGrad;
                         this.ctx.beginPath();
-                        this.ctx.arc(bx, by, radius, 0, Math.PI * 2);
+                        this.ctx.arc(bx, by, r, 0, Math.PI * 2);
                         this.ctx.fill();
+                        
+                        // קשת השתקפות לבנה מבריקה
+                        this.ctx.strokeStyle = '#ffffff';
+                        this.ctx.lineWidth = 1.2;
+                        this.ctx.beginPath();
+                        this.ctx.arc(bx, by, r - 3, 1.2 * Math.PI, 1.8 * Math.PI);
+                        this.ctx.stroke();
                     } else {
-                        // בועה מפוצצת
-                        this.ctx.strokeStyle = 'rgba(2, 132, 199, 0.3)';
+                        // בועה מפוצצת וקרועה
+                        this.ctx.strokeStyle = 'rgba(2, 132, 199, 0.28)';
                         this.ctx.lineWidth = 1.5;
                         this.ctx.beginPath();
-                        this.ctx.arc(bx, by, radius - 2, 0, Math.PI * 2);
+                        this.ctx.arc(bx, by, r - 1, 0, Math.PI * 2);
                         this.ctx.stroke();
                         
-                        // קווים קטנים המראים פיצוץ שקט
-                        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+                        // סדקי פיצוץ קטנים בפנים
+                        this.ctx.strokeStyle = 'rgba(14, 165, 233, 0.2)';
+                        this.ctx.lineWidth = 1;
                         this.ctx.beginPath();
-                        this.ctx.arc(bx, by, radius - 4, 0, Math.PI * 2);
-                        this.ctx.fill();
+                        this.ctx.moveTo(bx - 4, by - 4);
+                        this.ctx.lineTo(bx + 4, by + 4);
+                        this.ctx.moveTo(bx - 4, by + 4);
+                        this.ctx.lineTo(bx + 4, by - 4);
+                        this.ctx.stroke();
                     }
                 }
             }
@@ -649,196 +1014,328 @@ class Game {
         this.ctx.restore();
     }
 
-    // ציור דמות: Gamer Boy
+    // ציור דמות: Gamer Boy מרהיב ביופיו
     drawGamerBoy(p, wiggle) {
         const h = p.h;
         const w = p.w;
         const now = Date.now();
 
-        // 1. רגליים (בלוק רובלוקסי)
+        // 1. רגליים מפורטות עם נעלי ספורט זוהרות
         const legW = 9;
         const legH = 12;
-        const leftLegY = wiggle > 0 ? -2 : 0;
-        const rightLegY = wiggle < 0 ? -2 : 0;
+        const leftLegY = wiggle > 0 ? -3 : 0;
+        const rightLegY = wiggle < 0 ? -3 : 0;
         
-        this.ctx.fillStyle = '#111'; // נעליים/מכנסיים
-        this.ctx.strokeStyle = '#39ff14';
-        this.ctx.lineWidth = 1;
-        // רגל שמאל
-        this.ctx.fillRect(-w/2 + 2, -legH + leftLegY, legW, legH);
-        this.ctx.strokeRect(-w/2 + 2, -legH + leftLegY, legW, legH);
-        // רגל ימין
-        this.ctx.fillRect(w/2 - 2 - legW, -legH + rightLegY, legW, legH);
-        this.ctx.strokeRect(w/2 - 2 - legW, -legH + rightLegY, legW, legH);
+        // רגל שמאל (מכנסיים שחורים עם פס ירוק)
+        this.ctx.fillStyle = '#1e1b4b'; // כחול כהה
+        this.ctx.fillRect(-w/2 + 2, -legH + leftLegY, legW, legH - 3);
+        // נעל שמאל (ירוק ניאון ולבן)
+        this.ctx.fillStyle = '#39ff14';
+        this.ctx.fillRect(-w/2 + 1, -3 + leftLegY, legW + 2, 3);
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillRect(-w/2 + 3, -2 + leftLegY, 4, 1);
 
-        // 2. גוף (קפוצ'ון)
-        this.ctx.fillStyle = '#222';
+        // רגל ימין
+        this.ctx.fillStyle = '#1e1b4b';
+        this.ctx.fillRect(w/2 - 2 - legW, -legH + rightLegY, legW, legH - 3);
+        this.ctx.fillStyle = '#39ff14';
+        this.ctx.fillRect(w/2 - 3 - legW, -3 + rightLegY, legW + 2, 3);
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillRect(w/2 - 1 - legW, -2 + rightLegY, 4, 1);
+
+        // 2. גוף (קפוצ'ון גיימינג מעוצב)
+        const bodyY = -h + 12;
+        const bodyH = 24;
+        this.ctx.fillStyle = '#111827';
         this.ctx.strokeStyle = '#39ff14';
         this.ctx.lineWidth = 1.5;
-        this.drawRoundedRect(-w/2, -h + 12, w, 24, 4, true, true);
+        this.drawRoundedRect(-w/2, bodyY, w, bodyH, 5, true, true);
         
-        // הדפס זוהר על הקפוצ'ון
-        this.ctx.fillStyle = '#39ff14';
+        // סמל ברק זוהר על החזה (פועם באטיות)
+        const glowOpacity = 0.5 + Math.sin(now * 0.015) * 0.3;
+        this.ctx.save();
+        this.ctx.shadowBlur = 8;
+        this.ctx.shadowColor = '#39ff14';
+        this.ctx.fillStyle = `rgba(57, 255, 20, ${glowOpacity})`;
         this.ctx.beginPath();
-        this.ctx.arc(0, -h + 24, 4, 0, Math.PI * 2);
+        this.ctx.moveTo(-2, bodyY + 6);
+        this.ctx.lineTo(3, bodyY + 6);
+        this.ctx.lineTo(-1, bodyY + 11);
+        this.ctx.lineTo(4, bodyY + 11);
+        this.ctx.lineTo(-3, bodyY + 18);
+        this.ctx.lineTo(-1, bodyY + 12);
+        this.ctx.lineTo(-4, bodyY + 12);
+        this.ctx.closePath();
         this.ctx.fill();
+        this.ctx.restore();
+
+        // חוטי קפוצ'ון ירוקים ניאון
+        this.ctx.strokeStyle = '#39ff14';
+        this.ctx.lineWidth = 1.5;
+        this.ctx.beginPath();
+        this.ctx.moveTo(-5, bodyY + 3);
+        this.ctx.lineTo(-5, bodyY + 12);
+        this.ctx.moveTo(5, bodyY + 3);
+        this.ctx.lineTo(5, bodyY + 12);
+        this.ctx.stroke();
 
         // 3. ידיים
         const armW = 7;
         const armH = 20;
-        this.ctx.fillStyle = '#1a1a1a';
+        this.ctx.fillStyle = '#1f2937';
         this.ctx.strokeStyle = '#39ff14';
+        this.ctx.lineWidth = 1;
         // יד שמאל
         this.ctx.save();
-        this.ctx.translate(-w/2 - 2, -h + 14);
+        this.ctx.translate(-w/2 - 1, bodyY + 2);
         if (wiggle !== 0) this.ctx.rotate(-wiggle * 2);
-        this.ctx.fillRect(-armW, 0, armW, armH);
-        this.ctx.strokeRect(-armW, 0, armW, armH);
+        this.drawRoundedRect(-armW, 0, armW, armH, 3, true, true);
         this.ctx.restore();
         // יד ימין
         this.ctx.save();
-        this.ctx.translate(w/2 + 2, -h + 14);
+        this.ctx.translate(w/2 + 1, bodyY + 2);
         if (wiggle !== 0) this.ctx.rotate(wiggle * 2);
-        this.ctx.fillRect(0, 0, armW, armH);
-        this.ctx.strokeRect(0, 0, armW, armH);
+        this.drawRoundedRect(0, 0, armW, armH, 3, true, true);
         this.ctx.restore();
 
-        // 4. ראש
-        this.ctx.fillStyle = '#ffd1a9'; // צבע עור
+        // 4. ראש ושיער מפורטים
+        this.ctx.fillStyle = '#ffd1a9'; // עור
         this.ctx.fillRect(-9, -h - 1, 18, 14);
 
-        // שיער (בלוק)
-        this.ctx.fillStyle = '#4a2c11';
-        this.ctx.fillRect(-10, -h - 5, 20, 5);
-
-        // אוזניות גיימינג זוהרות ירוק
-        const headphonesGlow = Math.sin(now * 0.01) * 0.2 + 0.8;
-        this.ctx.strokeStyle = `rgba(57, 255, 20, ${headphonesGlow})`;
-        this.ctx.lineWidth = 3;
+        // שיער קוצני יפה
+        this.ctx.fillStyle = '#37200c'; // חום כהה
         this.ctx.beginPath();
-        this.ctx.arc(0, -h + 6, 12, Math.PI, 0); // קשת מעל הראש
-        this.ctx.stroke();
-        // כריות אוזניות
-        this.ctx.fillStyle = '#111';
-        this.ctx.fillRect(-13, -h + 2, 4, 8);
-        this.ctx.fillRect(9, -h + 2, 4, 8);
-        // צידיי אוזניות מוארים
-        this.ctx.fillStyle = '#39ff14';
-        this.ctx.fillRect(-14, -h + 4, 2, 4);
-        this.ctx.fillRect(12, -h + 4, 2, 4);
+        this.ctx.moveTo(-11, -h);
+        this.ctx.lineTo(-11, -h - 6);
+        this.ctx.lineTo(-7, -h - 10);
+        this.ctx.lineTo(-4, -h - 6);
+        this.ctx.lineTo(-1, -h - 11);
+        this.ctx.lineTo(3, -h - 7);
+        this.ctx.lineTo(7, -h - 10);
+        this.ctx.lineTo(11, -h - 5);
+        this.ctx.lineTo(11, -h + 2);
+        this.ctx.lineTo(9, -h + 2);
+        this.ctx.lineTo(8, -h - 2);
+        this.ctx.lineTo(-8, -h - 2);
+        this.ctx.closePath();
+        this.ctx.fill();
 
-        // משקפי שמש/פיקסלים שחורים
-        this.ctx.fillStyle = '#000000';
-        this.ctx.fillRect(-8, -h + 2, 16, 4);
-        // קו זוהר למשקפיים
+        // אוזניות גיימינג סופר יפות
+        const pulse = Math.sin(now * 0.01) * 0.2 + 0.8;
+        this.ctx.strokeStyle = `rgba(57, 255, 20, ${pulse})`;
+        this.ctx.lineWidth = 3.5;
+        this.ctx.beginPath();
+        this.ctx.arc(0, -h + 6, 12, Math.PI, 0); // קשת האוזניות
+        this.ctx.stroke();
+        
+        // כריות האוזניות בעיצוב עתידני
+        this.ctx.fillStyle = '#1f2937';
+        this.ctx.strokeStyle = '#39ff14';
+        this.ctx.lineWidth = 1;
+        this.drawRoundedRect(-14, -h + 1, 5, 10, 2, true, true);
+        this.drawRoundedRect(9, -h + 1, 5, 10, 2, true, true);
+        // נקודות לד זוהרות
         this.ctx.fillStyle = '#39ff14';
-        this.ctx.fillRect(-8, -h + 5, 4, 1);
-        this.ctx.fillRect(4, -h + 5, 4, 1);
+        this.ctx.fillRect(-13, -h + 5, 2, 2);
+        this.ctx.fillRect(11, -h + 5, 2, 2);
+
+        // משקפי פיקסלים מגניבים (Visor) עם השתקפות לבנה
+        this.ctx.fillStyle = '#0f172a';
+        this.drawRoundedRect(-9, -h + 2, 18, 5, 1, true, false);
+        this.ctx.fillStyle = '#39ff14'; // קו תחתון זוהר
+        this.ctx.fillRect(-9, -h + 6, 18, 1);
+        // השתקפות פיקסל לבן
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillRect(-7, -h + 3, 2, 2);
+        this.ctx.fillRect(3, -h + 3, 1, 1);
     }
 
-    // ציור דמות: Hawaii Girl
+    // ציור דמות: Hawaii Girl יפהפייה
     drawHawaiiGirl(p, wiggle) {
         const h = p.h;
         const w = p.w;
         const now = Date.now();
 
-        // גלשן על הגב (זווית מאחורי השחקן)
+        // גלשן על הגב עם גרפיקת גלים טרופיים
         this.ctx.save();
-        this.ctx.rotate(0.2);
-        const surfGrad = this.ctx.createLinearGradient(-15, -h, 0, -10);
+        this.ctx.rotate(0.18 + wiggle * 0.5); // הגלשן זז קצת בתנועה
+        const surfGrad = this.ctx.createLinearGradient(-16, -h, -4, -10);
         surfGrad.addColorStop(0, '#00f2fe');
-        surfGrad.addColorStop(1, '#4facfe');
+        surfGrad.addColorStop(0.5, '#4facfe');
+        surfGrad.addColorStop(1, '#ec4899'); // צבעים טרופיים עשירים
         this.ctx.fillStyle = surfGrad;
         this.ctx.strokeStyle = '#ffffff';
-        this.ctx.lineWidth = 1;
-        this.drawRoundedRect(-16, -h - 2, 12, 38, 6, true, true);
+        this.ctx.lineWidth = 1.5;
+        this.drawRoundedRect(-16, -h - 4, 12, 40, 6, true, true);
+        
+        // פסים מעוצבים על הגלשן (פס שמש כתום באמצע)
+        this.ctx.fillStyle = '#f97316';
+        this.ctx.beginPath();
+        this.ctx.ellipse(-10, -h + 16, 3, 8, 0, 0, Math.PI * 2);
+        this.ctx.fill();
         this.ctx.restore();
 
-        // 1. רגליים (שזופות)
+        // 1. שיער ארוך וזורם מאחור
+        this.ctx.fillStyle = '#1e1b4b';
+        // שיער שמאל
+        this.ctx.beginPath();
+        this.ctx.ellipse(-11, -h + 18, 5, 20, 0.1 + wiggle, 0, Math.PI * 2);
+        this.ctx.fill();
+        // שיער ימין
+        this.ctx.beginPath();
+        this.ctx.ellipse(11, -h + 18, 5, 20, -0.1 + wiggle, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // 2. רגליים שזופות עם צמידי פרחים קטנים בקרסול
         const legW = 9;
         const legH = 12;
-        const leftLegY = wiggle > 0 ? -2 : 0;
-        const rightLegY = wiggle < 0 ? -2 : 0;
+        const leftLegY = wiggle > 0 ? -3 : 0;
+        const rightLegY = wiggle < 0 ? -3 : 0;
         
-        this.ctx.fillStyle = '#d2a075'; // רגליים שזופות
+        this.ctx.fillStyle = '#d2a075'; // רגל שזופה
         this.ctx.fillRect(-w/2 + 2, -legH + leftLegY, legW, legH);
         this.ctx.fillRect(w/2 - 2 - legW, -legH + rightLegY, legW, legH);
+        
+        // צמיד פרחים ורוד בקרסול שמאל
+        this.ctx.fillStyle = '#ff007f';
+        this.ctx.beginPath();
+        this.ctx.arc(-w/2 + 4, -2 + leftLegY, 2, 0, Math.PI*2);
+        this.ctx.arc(-w/2 + 8, -2 + leftLegY, 2, 0, Math.PI*2);
+        this.ctx.fill();
 
-        // 2. חצאית קש (ירוק/צהוב)
-        this.ctx.fillStyle = '#eab308'; // חצאית
-        this.ctx.fillRect(-w/2, -legH - 2, w, 6);
-        // ציציות החצאית
-        this.ctx.fillStyle = '#a16207';
-        for (let i = 0; i < 5; i++) {
-            this.ctx.fillRect(-w/2 + (i*6) + 1, -legH + 3, 2, 4);
+        // 3. חצאית קש מפורטת עם גדילים זוהרים
+        this.ctx.fillStyle = '#f59e0b'; // חצאית צהובה-זהובה
+        this.ctx.fillRect(-w/2 - 1, -legH - 2, w + 2, 6);
+        // ציור גדילי חצאית מתנופפים
+        this.ctx.strokeStyle = '#d97706';
+        this.ctx.lineWidth = 1.5;
+        for (let i = 0; i < 7; i++) {
+            const lineX = -w/2 + (i * 5);
+            const sway = wiggle * 5 * (i % 2 === 0 ? 1 : -1);
+            this.ctx.beginPath();
+            this.ctx.moveTo(lineX, -legH + 2);
+            this.ctx.lineTo(lineX + sway, -legH + 9);
+            this.ctx.stroke();
         }
 
-        // 3. גוף (חולצת הוואי ורודה)
+        // 4. גוף (חולצת הוואי/בגד ים מפורט)
         const bodyH = 18;
         const bodyY = -h + 12;
         const bodyGrad = this.ctx.createLinearGradient(-w/2, bodyY, w/2, bodyY + bodyH);
-        bodyGrad.addColorStop(0, '#ff007f');
+        bodyGrad.addColorStop(0, '#ec4899');
         bodyGrad.addColorStop(1, '#f472b6');
         this.ctx.fillStyle = bodyGrad;
         this.drawRoundedRect(-w/2, bodyY, w, bodyH, 3, true, false);
         
-        // עיטור של פרח על החולצה
-        this.ctx.fillStyle = '#fff';
+        // הדפס פרחים לבן ויפה על בגד הים
+        this.ctx.fillStyle = '#ffffff';
         this.ctx.beginPath();
-        this.ctx.arc(0, bodyY + bodyH/2, 2.5, 0, Math.PI*2);
+        for (let a = 0; a < 5; a++) {
+            const ang = (a * Math.PI * 2) / 5;
+            this.ctx.arc(Math.cos(ang)*2.5, bodyY + 9 + Math.sin(ang)*2.5, 1.8, 0, Math.PI*2);
+        }
+        this.ctx.fill();
+        this.ctx.fillStyle = '#f59e0b'; // מרכז צהוב
+        this.ctx.beginPath();
+        this.ctx.arc(0, bodyY + 9, 1.2, 0, Math.PI*2);
         this.ctx.fill();
 
-        // 4. ידיים
+        // שרשרת פרחים (Lei) מסביב לצוואר
+        const leiColors = ['#ff007f', '#f59e0b', '#3b82f6', '#10b981'];
+        for (let i = 0; i < 4; i++) {
+            this.ctx.fillStyle = leiColors[i];
+            this.ctx.beginPath();
+            this.ctx.arc(-8 + i * 5, bodyY + 2, 2.5, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+
+        // 5. ידיים שזופות
         const armW = 7;
         const armH = 16;
         this.ctx.fillStyle = '#d2a075';
         // יד שמאל
         this.ctx.save();
-        this.ctx.translate(-w/2 - 2, -h + 14);
+        this.ctx.translate(-w/2 - 1, bodyY + 2);
         if (wiggle !== 0) this.ctx.rotate(-wiggle * 1.5);
-        this.ctx.fillRect(-armW, 0, armW, armH);
+        this.drawRoundedRect(-armW, 0, armW, armH, 2, true, false);
         this.ctx.restore();
         // יד ימין
         this.ctx.save();
-        this.ctx.translate(w/2 + 2, -h + 14);
+        this.ctx.translate(w/2 + 1, bodyY + 2);
         if (wiggle !== 0) this.ctx.rotate(wiggle * 1.5);
-        this.ctx.fillRect(0, 0, armW, armH);
+        this.drawRoundedRect(0, 0, armW, armH, 2, true, false);
         this.ctx.restore();
 
-        // 5. ראש ושיער
-        // שיער שחור ארוך מאחורי הראש
-        this.ctx.fillStyle = '#1e1b4b';
-        this.ctx.fillRect(-11, -h - 2, 22, 22);
-
-        // פנים
-        this.ctx.fillStyle = '#d2a075';
+        // 6. ראש וכתר פרחים מרהיב
+        this.ctx.fillStyle = '#d2a075'; // פנים
         this.ctx.fillRect(-9, -h - 1, 18, 13);
 
-        // כתר פרחים (הוואי)
-        const colors = ['#f43f5e', '#f472b6', '#eab308', '#22c55e', '#3b82f6'];
+        // שיער קדמי
+        this.ctx.fillStyle = '#1e1b4b';
+        this.ctx.fillRect(-10, -h - 2, 20, 4);
+
+        // כתר פרחים צבעוני מפורט
+        const crownColors = ['#f43f5e', '#ff007f', '#f59e0b', '#00f2fe', '#ffffff'];
         this.ctx.lineWidth = 1;
         for (let i = 0; i < 5; i++) {
             const flowerX = -10 + i * 5;
-            this.ctx.fillStyle = colors[(Math.floor(now / 300) + i) % colors.length];
+            
+            // עלה ירוק קטן מאחור
+            this.ctx.fillStyle = '#10b981';
             this.ctx.beginPath();
-            this.ctx.arc(flowerX, -h - 2, 3.5, 0, Math.PI * 2);
+            this.ctx.ellipse(flowerX - 2, -h - 3, 2, 4, 0.5, 0, Math.PI * 2);
             this.ctx.fill();
-            // פנים הפרח בצהוב/לבן
-            this.ctx.fillStyle = '#ffffff';
+
+            // הפרח
+            this.ctx.fillStyle = crownColors[(Math.floor(now / 250) + i) % crownColors.length];
+            this.ctx.beginPath();
+            this.ctx.arc(flowerX, -h - 2, 3.8, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // מרכז הפרח
+            this.ctx.fillStyle = '#fef08a';
             this.ctx.beginPath();
             this.ctx.arc(flowerX, -h - 2, 1.2, 0, Math.PI * 2);
             this.ctx.fill();
         }
 
-        // עיניים חמודות
+        // עיניים יפות עם ריסים עדינים
         this.ctx.fillStyle = '#000000';
-        this.ctx.fillRect(-5, -h + 3, 2, 2);
-        this.ctx.fillRect(3, -h + 3, 2, 2);
+        this.ctx.beginPath();
+        this.ctx.arc(-4, -h + 4, 2, 0, Math.PI * 2);
+        this.ctx.arc(4, -h + 4, 2, 0, Math.PI * 2);
+        this.ctx.fill();
         
+        // ריסים
+        this.ctx.strokeStyle = '#000000';
+        this.ctx.lineWidth = 1.2;
+        this.ctx.beginPath();
+        this.ctx.moveTo(-6, -h + 2);
+        this.ctx.lineTo(-4, -h + 3);
+        this.ctx.moveTo(6, -h + 2);
+        this.ctx.lineTo(4, -h + 3);
+        this.ctx.stroke();
+
+        // נקודות אור בעיניים
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.beginPath();
+        this.ctx.arc(-4.5, -h + 3.2, 0.7, 0, Math.PI * 2);
+        this.ctx.arc(3.5, -h + 3.2, 0.7, 0, Math.PI * 2);
+        this.ctx.fill();
+
         // סומק ורוד בלחיים
-        this.ctx.fillStyle = 'rgba(244, 63, 94, 0.4)';
-        this.ctx.fillRect(-7, -h + 6, 3, 2);
-        this.ctx.fillRect(4, -h + 6, 3, 2);
+        this.ctx.fillStyle = 'rgba(244, 63, 94, 0.45)';
+        this.ctx.beginPath();
+        this.ctx.arc(-6.5, -h + 7, 2.5, 0, Math.PI * 2);
+        this.ctx.arc(6.5, -h + 7, 2.5, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // חיוך עדין
+        this.ctx.strokeStyle = '#475569';
+        this.ctx.lineWidth = 1.2;
+        this.ctx.beginPath();
+        this.ctx.arc(0, -h + 7, 3, 0.1 * Math.PI, 0.9 * Math.PI);
+        this.ctx.stroke();
     }
 
     // פונקציית עזר לציור מלבן עם פינות מעוגלות
