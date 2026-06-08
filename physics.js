@@ -54,7 +54,7 @@ class GamePhysics {
             plat.wobbleAngle = 0;
             plat.wobbleAmp = 0;
             
-            if (plat.type === 'soda_can') {
+            if (plat.type === 'soda_can' || plat.type === 'toothpaste') {
                 plat.crushStage = 0; // 0 = שלם, 1 = חצי מעוך, 2 = שטוח לחלוטין
                 plat.originalH = plat.h;
                 plat.originalY = plat.y;
@@ -212,8 +212,9 @@ class GamePhysics {
 
         for (const plat of this.level.platforms) {
             // חישוב גובה נוכחי מופחת (בעקבות מעיכה)
-            const platH = plat.type === 'soda_can' ? plat.currentH : plat.h * plat.squishY;
-            const platY = plat.type === 'soda_can' ? plat.currentY : plat.y + (plat.h - platH);
+            const isCrushable = plat.type === 'soda_can' || plat.type === 'toothpaste';
+            const platH = isCrushable ? plat.currentH : plat.h * plat.squishY;
+            const platY = isCrushable ? plat.currentY : plat.y + (plat.h - platH);
 
             // בדיקת חפיפה (AABB)
             if (p.x + p.w > plat.x && 
@@ -296,6 +297,108 @@ class GamePhysics {
                 audio.playBoing();
                 particles.spawnSquishExplosion(p.x + p.w / 2, plat.y + 10, '#d946ef');
                 break;
+
+            case 'cat':
+                // חתול: כיווץ רך, הקפצה בינונית, ויללה
+                plat.squishY = isSlam ? 0.45 : 0.65;
+                plat.wobbleAmp = isSlam ? 22 : 12;
+                plat.wobbleAngle = 0;
+                p.vy = isSlam ? -11.5 : -9.0;
+                p.grounded = false;
+                
+                audio.playMeow();
+                particles.spawnSquishExplosion(p.x + p.w / 2, plat.y + 10, '#f97316'); // חלקיקים כתומים
+                break;
+
+            case 'frog':
+                // צפרדע: קפיצה גבוהה, כיווץ משמעותי, וקרקור
+                plat.squishY = isSlam ? 0.35 : 0.5;
+                plat.wobbleAmp = isSlam ? 28 : 16;
+                plat.wobbleAngle = 0;
+                p.vy = isSlam ? -14.5 : -12.0;
+                p.grounded = false;
+                
+                audio.playFrogCroak();
+                particles.spawnSquishExplosion(p.x + p.w / 2, plat.y + 10, '#22c55e'); // חלקיקים ירוקים
+                break;
+
+            case 'keyboard_key':
+                // מקש מקלדת: לחיצה מהירה וקליק
+                plat.squishY = isSlam ? 0.5 : 0.7;
+                p.vy = isSlam ? -9.5 : -7.5;
+                p.grounded = false;
+                
+                audio.playKeyboardClick();
+                particles.spawnSquishExplosion(p.x + p.w / 2, plat.y + 5, '#e2e8f0'); // חלקיקים אפורים/לבנים
+                break;
+
+            case 'toothpaste':
+                // שפופרת משחת שיניים: נמעכת בשלבים ופולטת משחה
+                if (plat.crushStage < 2) {
+                    plat.crushStage = isSlam ? 2 : plat.crushStage + 1;
+                    
+                    audio.playCrunch();
+                    particles.spawnCrunchExplosion(p.x + p.w / 2, plat.y + 20, '#38bdf8'); // חלקיקים בצבע תכלת משחה
+                    
+                    if (plat.crushStage === 1) {
+                        plat.currentH = plat.originalH * 0.65;
+                        plat.currentY = plat.originalY + (plat.originalH - plat.currentH);
+                        p.vy = -4.0;
+                        p.grounded = false;
+                    } else if (plat.crushStage === 2) {
+                        plat.currentH = plat.originalH * 0.3;
+                        plat.currentY = plat.originalY + (plat.originalH - plat.currentH);
+                        p.vy = -3.0;
+                        p.grounded = false;
+                    }
+                    
+                    p.y = plat.currentY - p.h;
+                } else {
+                    particles.spawnDust(p.x + p.w / 2, plat.currentY, '#e0f2fe');
+                }
+                break;
+
+            case 'sponge':
+                // ספוג: רך מאוד, כיווץ בינוני
+                plat.squishY = isSlam ? 0.4 : 0.6;
+                p.vy = isSlam ? -10.0 : -8.0;
+                p.grounded = false;
+                
+                audio.playSquish();
+                particles.spawnSquishExplosion(p.x + p.w / 2, plat.y + 10, '#fef08a'); // חלקיקים צהובים
+                break;
+
+            case 'donut':
+                // דונאט: קפיצי ורוטט
+                plat.wobbleAmp = isSlam ? 24 : 14;
+                plat.wobbleAngle = 0;
+                plat.squishY = isSlam ? 0.5 : 0.7;
+                p.vy = isSlam ? -12.0 : -9.5;
+                p.grounded = false;
+                
+                audio.playBoing();
+                particles.spawnSquishExplosion(p.x + p.w / 2, plat.y + 10, '#f472b6'); // חלקיקים ורוד סוכריות
+                break;
+
+            case 'hamburger':
+                // המבורגר: כבד ומעיך
+                plat.squishY = isSlam ? 0.55 : 0.75;
+                p.vy = isSlam ? -11.0 : -8.5;
+                p.grounded = false;
+                
+                audio.playSquish();
+                particles.spawnSquishExplosion(p.x + p.w / 2, plat.y + 10, '#fbbf24'); // חלקיקים צהובים/חומים
+                break;
+
+            case 'pillow':
+                // כרית: סופר רכה, שקיעה עמוקה ודחיפה קלה
+                plat.squishY = isSlam ? 0.35 : 0.55;
+                p.vy = isSlam ? -9.0 : -7.0;
+                p.grounded = false;
+                
+                audio.playSquish();
+                particles.spawnSquishExplosion(p.x + p.w / 2, plat.y + 10, '#ffffff'); // חלקיקי נוצות לבנים
+                break;
                 
             case 'soda_can':
                 // פחית שתייה / בקבוק פלסטיק: מעיכה בשלבים
@@ -334,7 +437,7 @@ class GamePhysics {
                 const playerCenterX = p.x + p.w / 2;
                 const relativeX = playerCenterX - plat.x;
                 const bubbleIdx = Math.floor(relativeX / bubbleWidth);
-
+ 
                 if (bubbleIdx >= 0 && bubbleIdx < plat.bubbles.length) {
                     const bubble = plat.bubbles[bubbleIdx];
                     if (!bubble.popped) {
@@ -346,7 +449,7 @@ class GamePhysics {
                         // קפיצת דחיפה קלה (נחמד לריצה קפיצית על פצפצים)
                         p.vy = isSlam ? -6.5 : -5.2;
                         p.grounded = false;
-
+ 
                         // בעולם הראשון בלבד - בועות הפצפצים יחזרו להתנפח אחרי 10 שניות
                         if (this.level && this.level.worldId === 1) {
                             setTimeout(() => {
@@ -380,14 +483,15 @@ class GamePhysics {
     updatePlatformAnimations() {
         if (!this.level) return;
 
+        const squishyTypes = ['stress_ball', 'cat', 'frog', 'keyboard_key', 'sponge', 'donut', 'hamburger', 'pillow'];
+        const wobblyTypes = ['jelly', 'cat', 'frog', 'donut'];
+
         for (const plat of this.level.platforms) {
-            // כדורי לחץ חוזרים לגודלם המקורי
-            if (plat.type === 'stress_ball') {
+            if (squishyTypes.includes(plat.type)) {
                 plat.squishY += (1 - plat.squishY) * 0.1;
             }
             
-            // ג'לי מתנדנד לפי סינוס דועך
-            if (plat.type === 'jelly') {
+            if (wobblyTypes.includes(plat.type)) {
                 if (plat.wobbleAmp > 0.1) {
                     plat.wobbleAngle += 0.25; // מהירות הרטיטה
                     plat.wobbleAmp *= 0.92;   // דעיכת הרטיטה

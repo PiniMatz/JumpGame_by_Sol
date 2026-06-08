@@ -350,6 +350,114 @@ class AudioSynth {
         osc.stop(now + 0.15);
     }
 
+    // צליל לחיצת מקלדת מכנית (Keyboard click)
+    playKeyboardClick() {
+        this.init();
+        if (!this.ctx || this.isMuted) return;
+        const now = this.ctx.currentTime;
+        
+        // 1. קליק סינוס קצר בתדר גבוה
+        const osc = this.ctx.createOscillator();
+        const gainNode = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1700, now);
+        osc.frequency.exponentialRampToValueAtTime(1100, now + 0.035);
+        gainNode.gain.setValueAtTime(0.18, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+        
+        osc.connect(gainNode);
+        gainNode.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.035);
+
+        // 2. רעש פיצוח מהיר מאוד (Highpass noise transient)
+        const noise = this.playNoise(0.03, 'highpass', 4500, 1.5);
+        if (noise) {
+            noise.gainNode.gain.setValueAtTime(0.18, now);
+            noise.gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+            noise.source.start(now);
+            noise.source.stop(now + 0.03);
+        }
+    }
+
+    // צליל יללת חתול חמודה (Meow)
+    playMeow() {
+        this.init();
+        if (!this.ctx || this.isMuted) return;
+        const now = this.ctx.currentTime;
+        const duration = 0.35;
+        
+        const osc = this.ctx.createOscillator();
+        const gainNode = this.ctx.createGain();
+        osc.type = 'triangle';
+        
+        // Meow frequency sweep
+        osc.frequency.setValueAtTime(360, now);
+        osc.frequency.linearRampToValueAtTime(620, now + 0.12);
+        osc.frequency.exponentialRampToValueAtTime(400, now + duration);
+        
+        // Bandpass filter to create nasal vocal "mew" sound
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(1100, now);
+        filter.frequency.linearRampToValueAtTime(1900, now + 0.12);
+        filter.frequency.exponentialRampToValueAtTime(1000, now + duration);
+        filter.Q.setValueAtTime(2, now);
+        
+        gainNode.gain.setValueAtTime(0.001, now);
+        gainNode.gain.linearRampToValueAtTime(0.16, now + 0.05);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        
+        osc.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(this.ctx.destination);
+        
+        osc.start(now);
+        osc.stop(now + duration);
+    }
+
+    // צליל קרקור צפרדע (Frog croak)
+    playFrogCroak() {
+        this.init();
+        if (!this.ctx || this.isMuted) return;
+        const now = this.ctx.currentTime;
+        const duration = 0.28;
+        
+        const osc = this.ctx.createOscillator();
+        const gainNode = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(115, now);
+        osc.frequency.linearRampToValueAtTime(95, now + duration);
+        
+        // Bandpass filter with a modulation LFO to give it the "ribbit" texture
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(550, now);
+        filter.Q.setValueAtTime(5, now);
+        
+        const modulator = this.ctx.createOscillator();
+        modulator.frequency.setValueAtTime(48, now); // 48Hz buzz modulation
+        
+        const modGain = this.ctx.createGain();
+        modGain.gain.setValueAtTime(120, now); // Modulate filter frequency
+        
+        gainNode.gain.setValueAtTime(0.001, now);
+        gainNode.gain.linearRampToValueAtTime(0.24, now + 0.04);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        
+        modulator.connect(modGain);
+        modGain.connect(filter.frequency);
+        
+        osc.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(this.ctx.destination);
+        
+        osc.start(now);
+        modulator.start(now);
+        osc.stop(now + duration);
+        modulator.stop(now + duration);
+    }
+
     toggleMute() {
         this.isMuted = !this.isMuted;
         return this.isMuted;

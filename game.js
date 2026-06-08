@@ -41,6 +41,9 @@ class Game {
         // זיהוי מכשיר מגע
         this.isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.matchMedia('(pointer: coarse)').matches;
 
+        this.lastFrameTime = performance.now();
+        this.levelTimeLeft = 90;
+
         this.initDOM();
         this.initTouchControls();
     }
@@ -132,6 +135,9 @@ class Game {
             this.deaths++;
             this.totalDeaths++;
             document.getElementById('hud-deaths-count').textContent = this.deaths;
+            // איפוס טיימר במוות
+            this.levelTimeLeft = 90;
+            this.lastFrameTime = performance.now();
         });
 
         // האזנה למקלדת
@@ -246,6 +252,14 @@ class Game {
         particles.clear();
         this.cameraX = 0;
 
+        this.levelTimeLeft = 90;
+        this.lastFrameTime = performance.now();
+        const timerEl = document.getElementById('hud-timer-value');
+        if (timerEl) {
+            timerEl.textContent = "90";
+            timerEl.parentElement.classList.remove('low-time');
+        }
+
         // עדכון HUD
         document.getElementById('hud-world-name').textContent = lvl.name;
         document.getElementById('hud-progress-bar').style.width = '0%';
@@ -263,6 +277,10 @@ class Game {
 
     // עדכון לוגיקה בכל פריים
     update() {
+        const now = performance.now();
+        const dt = (now - this.lastFrameTime) / 1000;
+        this.lastFrameTime = now;
+
         this.updateControlsUI();
         
         if (this.gameState !== 'PLAYING') {
@@ -270,6 +288,23 @@ class Game {
             this.portalRotation += 0.01;
             this.updateClouds();
             return;
+        }
+
+        // עדכון טיימר
+        this.levelTimeLeft -= dt;
+        if (this.levelTimeLeft <= 0) {
+            this.levelTimeLeft = 90;
+            physics.handleDeath();
+        }
+        
+        const timerEl = document.getElementById('hud-timer-value');
+        if (timerEl) {
+            timerEl.textContent = Math.max(0, Math.ceil(this.levelTimeLeft));
+            if (this.levelTimeLeft < 15) {
+                timerEl.parentElement.classList.add('low-time');
+            } else {
+                timerEl.parentElement.classList.remove('low-time');
+            }
         }
 
         // עדכון עננים
@@ -468,247 +503,496 @@ class Game {
                 this.ctx.lineTo(rx + plat.w - 4, plat.y + 1);
                 this.ctx.stroke();
             } 
-            else if (plat.type === 'stress_ball') {
+            else if (plat.type === 'cat') {
                 const squish = plat.squishY;
                 const currentH = plat.h * squish;
-                const currentW = plat.w * (1 + (1 - squish) * 0.7);
+                const wobble = Math.sin(plat.wobbleAngle) * plat.wobbleAmp;
                 
                 this.ctx.save();
-                this.ctx.translate(rx + plat.w / 2, plat.y + plat.h); // Bottom center reference
-                this.ctx.scale(currentW / plat.w, squish);
-
-                if (plat.label && (plat.label.includes("ברווז") || plat.label.includes("duck"))) {
-                    // ציור ברווז גומי צהוב אמיתי ומתוק!
-                    // גוף הברווז
-                    this.ctx.fillStyle = '#facc15'; // צהוב בהיר
+                this.ctx.translate(rx + plat.w / 2 + wobble, plat.y + plat.h);
+                this.ctx.scale(1 + (1 - squish) * 0.3, squish);
+                
+                // Cat body (curled up ellipse)
+                this.ctx.fillStyle = '#f97316'; // Orange tabby
+                this.ctx.beginPath();
+                this.ctx.ellipse(0, -plat.h / 2, plat.w * 0.45, plat.h * 0.45, 0, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Dark orange stripes
+                this.ctx.strokeStyle = '#ea580c';
+                this.ctx.lineWidth = 3;
+                for (let i = -2; i <= 2; i++) {
                     this.ctx.beginPath();
-                    this.ctx.ellipse(0, -plat.h * 0.35, plat.w * 0.44, plat.h * 0.35, 0, 0, Math.PI * 2);
-                    this.ctx.fill();
-                    
-                    // כנף
-                    this.ctx.fillStyle = '#eab308'; // צהוב כהה
-                    this.ctx.beginPath();
-                    this.ctx.ellipse(-plat.w * 0.1, -plat.h * 0.35, plat.w * 0.18, plat.h * 0.14, -0.2, 0, Math.PI * 2);
-                    this.ctx.fill();
-                    
-                    // זנב קטנטן
-                    this.ctx.fillStyle = '#facc15';
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(-plat.w * 0.4, -plat.h * 0.45);
-                    this.ctx.quadraticCurveTo(-plat.w * 0.52, -plat.h * 0.65, -plat.w * 0.48, -plat.h * 0.65);
-                    this.ctx.quadraticCurveTo(-plat.w * 0.35, -plat.h * 0.5, -plat.w * 0.3, -plat.h * 0.4);
-                    this.ctx.fill();
-                    
-                    // צוואר וראש
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(plat.w * 0.1, -plat.h * 0.5);
-                    this.ctx.quadraticCurveTo(plat.w * 0.22, -plat.h * 0.55, plat.w * 0.22, -plat.h * 0.65);
-                    this.ctx.lineTo(plat.w * 0.05, -plat.h * 0.65);
-                    this.ctx.closePath();
-                    this.ctx.fill();
-                    
-                    this.ctx.beginPath();
-                    this.ctx.arc(plat.w * 0.22, -plat.h * 0.68, plat.h * 0.22, 0, Math.PI * 2);
-                    this.ctx.fill();
-                    
-                    // מקור כתום בולט
-                    this.ctx.fillStyle = '#f97316';
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(plat.w * 0.42, -plat.h * 0.72);
-                    this.ctx.lineTo(plat.w * 0.62, -plat.h * 0.66);
-                    this.ctx.lineTo(plat.w * 0.42, -plat.h * 0.60);
-                    this.ctx.closePath();
-                    this.ctx.fill();
-                    
-                    // עין עם השתקפות
-                    this.ctx.fillStyle = '#000000';
-                    this.ctx.beginPath();
-                    this.ctx.arc(plat.w * 0.26, -plat.h * 0.73, 3.5, 0, Math.PI * 2);
-                    this.ctx.fill();
-                    this.ctx.fillStyle = '#ffffff';
-                    this.ctx.beginPath();
-                    this.ctx.arc(plat.w * 0.28, -plat.h * 0.75, 1.2, 0, Math.PI * 2);
-                    this.ctx.fill();
-                } else {
-                    // כדור גומי / לחץ מונפש תלת-ממדי
-                    const ballGrad = this.ctx.createRadialGradient(-plat.w * 0.1, -plat.h * 0.6, 5, 0, -plat.h * 0.5, plat.w / 2);
-                    if (plat.label && plat.label.includes("כדור גומי")) {
-                        ballGrad.addColorStop(0, '#60a5fa');
-                        ballGrad.addColorStop(0.5, '#2563eb');
-                        ballGrad.addColorStop(1, '#1e3a8a');
-                    } else {
-                        ballGrad.addColorStop(0, '#f472b6');
-                        ballGrad.addColorStop(0.5, '#db2777');
-                        ballGrad.addColorStop(1, '#831843');
-                    }
-                    
-                    this.ctx.fillStyle = ballGrad;
-                    this.ctx.beginPath();
-                    this.ctx.arc(0, -plat.h / 2, plat.w / 2, 0, Math.PI * 2);
-                    this.ctx.fill();
-                    
-                    // קו ברק לבן
-                    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-                    this.ctx.lineWidth = 3;
-                    this.ctx.beginPath();
-                    this.ctx.arc(0, -plat.h / 2, plat.w / 2 - 4, 1.2 * Math.PI, 1.8 * Math.PI);
-                    this.ctx.stroke();
-                    
-                    // פרצוף סמיילי חמוד שנמעך עם הכדור
-                    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
-                    this.ctx.beginPath();
-                    this.ctx.arc(-plat.w * 0.13, -plat.h * 0.55, 3.2, 0, Math.PI * 2);
-                    this.ctx.arc(plat.w * 0.13, -plat.h * 0.55, 3.2, 0, Math.PI * 2);
-                    this.ctx.fill();
-                    
-                    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
-                    this.ctx.lineWidth = 2;
-                    this.ctx.beginPath();
-                    this.ctx.arc(0, -plat.h * 0.45, 8, 0.1 * Math.PI, 0.9 * Math.PI);
+                    this.ctx.moveTo(i * 12, -plat.h * 0.7);
+                    this.ctx.quadraticCurveTo(i * 12 + 4, -plat.h * 0.4, i * 12, -plat.h * 0.1);
                     this.ctx.stroke();
                 }
+                
+                // Head (circle on one side)
+                this.ctx.fillStyle = '#f97316';
+                this.ctx.beginPath();
+                this.ctx.arc(plat.w * 0.25, -plat.h * 0.5, plat.h * 0.35, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Ears
+                this.ctx.fillStyle = '#ea580c';
+                this.ctx.beginPath();
+                this.ctx.moveTo(plat.w * 0.15, -plat.h * 0.75);
+                this.ctx.lineTo(plat.w * 0.2, -plat.h * 0.95);
+                this.ctx.lineTo(plat.w * 0.3, -plat.h * 0.8);
+                this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.beginPath();
+                this.ctx.moveTo(plat.w * 0.3, -plat.h * 0.8);
+                this.ctx.lineTo(plat.w * 0.38, -plat.h * 0.98);
+                this.ctx.lineTo(plat.w * 0.4, -plat.h * 0.78);
+                this.ctx.closePath();
+                this.ctx.fill();
+                
+                // Sleeping closed eyes
+                this.ctx.strokeStyle = '#451a03';
+                this.ctx.lineWidth = 1.5;
+                this.ctx.beginPath();
+                this.ctx.arc(plat.w * 0.22, -plat.h * 0.5, 3, 0, Math.PI);
+                this.ctx.arc(plat.w * 0.32, -plat.h * 0.5, 3, 0, Math.PI);
+                this.ctx.stroke();
+                
+                // White chest/tummy patch
+                this.ctx.fillStyle = '#ffedd5';
+                this.ctx.beginPath();
+                this.ctx.ellipse(-plat.w * 0.15, -plat.h * 0.35, plat.w * 0.15, plat.h * 0.2, 0, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Curled tail
+                this.ctx.strokeStyle = '#f97316';
+                this.ctx.lineWidth = 8;
+                this.ctx.lineCap = 'round';
+                this.ctx.beginPath();
+                this.ctx.moveTo(-plat.w * 0.38, -plat.h * 0.3);
+                this.ctx.quadraticCurveTo(-plat.w * 0.52, -plat.h * 0.4, -plat.w * 0.46, -plat.h * 0.6);
+                this.ctx.stroke();
+                
                 this.ctx.restore();
             } 
-            else if (plat.type === 'jelly') {
-                if (plat.label === "ארגז קרטון") {
-                    // קופסת קרטון רוטטת ומגניבה במקום ג'לי!
-                    const wobble = Math.sin(plat.wobbleAngle) * plat.wobbleAmp;
+            else if (plat.type === 'frog') {
+                const squish = plat.squishY;
+                const currentH = plat.h * squish;
+                const wobble = Math.sin(plat.wobbleAngle) * plat.wobbleAmp;
+                
+                this.ctx.save();
+                this.ctx.translate(rx + plat.w / 2 + wobble, plat.y + plat.h);
+                this.ctx.scale(1 + (1 - squish) * 0.3, squish);
+                
+                // Frog green body
+                this.ctx.fillStyle = '#22c55e'; // Green
+                this.ctx.beginPath();
+                this.ctx.ellipse(0, -plat.h * 0.35, plat.w * 0.42, plat.h * 0.35, 0, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Yellow belly
+                this.ctx.fillStyle = '#bef264';
+                this.ctx.beginPath();
+                this.ctx.ellipse(0, -plat.h * 0.25, plat.w * 0.24, plat.h * 0.22, 0, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Big round eyes popping out of head
+                this.ctx.fillStyle = '#22c55e';
+                this.ctx.beginPath();
+                this.ctx.arc(-plat.w * 0.2, -plat.h * 0.65, 12, 0, Math.PI * 2);
+                this.ctx.arc(plat.w * 0.2, -plat.h * 0.65, 12, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Eye whites
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.beginPath();
+                this.ctx.arc(-plat.w * 0.2, -plat.h * 0.67, 8, 0, Math.PI * 2);
+                this.ctx.arc(plat.w * 0.2, -plat.h * 0.67, 8, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Pupils
+                this.ctx.fillStyle = '#000000';
+                this.ctx.beginPath();
+                this.ctx.arc(-plat.w * 0.2, -plat.h * 0.67, 4, 0, Math.PI * 2);
+                this.ctx.arc(plat.w * 0.2, -plat.h * 0.67, 4, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Cheek blush
+                this.ctx.fillStyle = 'rgba(239, 68, 68, 0.4)';
+                this.ctx.beginPath();
+                this.ctx.arc(-plat.w * 0.28, -plat.h * 0.38, 4, 0, Math.PI * 2);
+                this.ctx.arc(plat.w * 0.28, -plat.h * 0.38, 4, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Cute frog mouth
+                this.ctx.strokeStyle = '#15803d';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.arc(0, -plat.h * 0.38, 10, 0, Math.PI);
+                this.ctx.stroke();
+                
+                // Folded frog legs on the sides
+                this.ctx.fillStyle = '#16a34a'; // Darker green
+                this.ctx.beginPath();
+                this.ctx.ellipse(-plat.w * 0.42, -plat.h * 0.2, plat.w * 0.12, plat.h * 0.18, -0.4, 0, Math.PI * 2);
+                this.ctx.ellipse(plat.w * 0.42, -plat.h * 0.2, plat.w * 0.12, plat.h * 0.18, 0.4, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.restore();
+            }
+            else if (plat.type === 'keyboard_key') {
+                const squish = plat.squishY;
+                const currentH = plat.h * squish;
+                
+                this.ctx.save();
+                // 3D keycap base
+                const keyGrad = this.ctx.createLinearGradient(rx, plat.y, rx, plat.y + plat.h);
+                keyGrad.addColorStop(0, '#cbd5e1'); // light gray top
+                keyGrad.addColorStop(1, '#64748b'); // dark gray base
+                
+                this.ctx.fillStyle = keyGrad;
+                this.ctx.strokeStyle = '#475569';
+                this.ctx.lineWidth = 2;
+                this.drawRoundedRect(rx, plat.y + (plat.h - currentH), plat.w, currentH, 6, true, true);
+                
+                // Inside face top indent
+                this.ctx.fillStyle = '#f1f5f9';
+                this.drawRoundedRect(rx + 6, plat.y + (plat.h - currentH) + 4, plat.w - 12, currentH * 0.7, 4, true, false);
+                
+                // Printed letter
+                this.ctx.fillStyle = '#0f172a';
+                this.ctx.font = `bold ${Math.max(10, Math.floor(currentH * 0.35))}px Rubik`;
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                const label = plat.keyChar || 'A';
+                this.ctx.fillText(label, rx + plat.w / 2, plat.y + (plat.h - currentH) + currentH * 0.45);
+                
+                this.ctx.restore();
+            }
+            else if (plat.type === 'toothpaste') {
+                const py = plat.currentY;
+                const ph = plat.currentH;
+                const pw = plat.w;
+                
+                this.ctx.save();
+                
+                if (plat.crushStage === 0) {
+                    // Toothpaste tube: gradient of white-blue plastic
+                    const tubeGrad = this.ctx.createLinearGradient(rx, py, rx + pw, py);
+                    tubeGrad.addColorStop(0, '#e0f2fe'); // soft blue-white
+                    tubeGrad.addColorStop(0.5, '#ffffff'); // shiny white highlight
+                    tubeGrad.addColorStop(1, '#bae6fd'); // soft blue shadow
+                    
+                    this.ctx.fillStyle = tubeGrad;
+                    this.ctx.strokeStyle = '#38bdf8';
+                    this.ctx.lineWidth = 2;
+                    
+                    // Tube body shape
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(rx + pw * 0.15, py + ph); // Left flat end
+                    this.ctx.lineTo(rx + pw * 0.85, py + ph); // Right flat end
+                    this.ctx.lineTo(rx + pw * 0.7, py + ph * 0.15); // Tapering
+                    this.ctx.lineTo(rx + pw * 0.3, py + ph * 0.15); // Tapering
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                    this.ctx.stroke();
+                    
+                    // Blue screw nozzle cap
+                    this.ctx.fillStyle = '#0284c7';
+                    this.ctx.fillRect(rx + pw * 0.4, py - 4, pw * 0.2, ph * 0.18);
+                    
+                    // Red and blue stripe pattern
+                    this.ctx.fillStyle = '#ef4444'; // Red stripe
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(rx + pw * 0.35, py + ph * 0.7);
+                    this.ctx.quadraticCurveTo(rx + pw * 0.5, py + ph * 0.5, rx + pw * 0.65, py + ph * 0.7);
+                    this.ctx.lineTo(rx + pw * 0.6, py + ph * 0.8);
+                    this.ctx.quadraticCurveTo(rx + pw * 0.5, py + ph * 0.6, rx + pw * 0.4, py + ph * 0.8);
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                    
+                    this.ctx.fillStyle = '#3b82f6'; // Blue stripe
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(rx + pw * 0.38, py + ph * 0.4);
+                    this.ctx.quadraticCurveTo(rx + pw * 0.5, py + ph * 0.3, rx + pw * 0.62, py + ph * 0.4);
+                    this.ctx.lineTo(rx + pw * 0.58, py + ph * 0.5);
+                    this.ctx.quadraticCurveTo(rx + pw * 0.5, py + ph * 0.4, rx + pw * 0.42, py + ph * 0.5);
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                } 
+                else if (plat.crushStage === 1) {
+                    // Half-crushed tube, dented outline
+                    this.ctx.fillStyle = '#e2e8f0';
+                    this.ctx.strokeStyle = '#94a3b8';
+                    this.ctx.lineWidth = 1.5;
+                    
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(rx + pw * 0.1, py + ph);
+                    this.ctx.lineTo(rx + pw * 0.9, py + ph);
+                    this.ctx.lineTo(rx + pw * 0.8, py + ph * 0.45);
+                    this.ctx.lineTo(rx + pw * 0.65, py + ph * 0.3);
+                    this.ctx.lineTo(rx + pw * 0.35, py + ph * 0.3);
+                    this.ctx.lineTo(rx + pw * 0.2, py + ph * 0.45);
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                    this.ctx.stroke();
+                    
+                    // Blue cap popping off/squished
+                    this.ctx.fillStyle = '#0284c7';
+                    this.ctx.fillRect(rx + pw * 0.42, py + ph * 0.05, pw * 0.16, ph * 0.25);
+                    
+                    // Toothpaste squeezing out
+                    const pasteGrad = this.ctx.createLinearGradient(rx + pw * 0.4, py, rx + pw * 0.6, py);
+                    pasteGrad.addColorStop(0, '#38bdf8');
+                    pasteGrad.addColorStop(0.5, '#ffffff');
+                    pasteGrad.addColorStop(1, '#ef4444');
+                    this.ctx.fillStyle = pasteGrad;
+                    this.ctx.beginPath();
+                    this.ctx.ellipse(rx + pw * 0.5, py + ph * 0.05, pw * 0.18, ph * 0.2, 0, 0, Math.PI * 2);
+                    this.ctx.fill();
+                } 
+                else {
+                    // Fully flattened tube
+                    this.ctx.fillStyle = '#cbd5e1';
+                    this.ctx.strokeStyle = '#94a3b8';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.beginPath();
+                    this.ctx.ellipse(rx + pw/2, py + ph/2, pw * 0.52, ph * 0.5, 0.05, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.stroke();
+                    
+                    // Big splat of toothpaste
+                    const pasteGrad = this.ctx.createLinearGradient(rx + pw * 0.3, py, rx + pw * 0.7, py);
+                    pasteGrad.addColorStop(0, '#38bdf8');
+                    pasteGrad.addColorStop(0.5, '#ffffff');
+                    pasteGrad.addColorStop(1, '#ef4444');
+                    this.ctx.fillStyle = pasteGrad;
+                    this.ctx.beginPath();
+                    this.ctx.ellipse(rx + pw * 0.5, py + ph/2, pw * 0.4, ph * 0.4, -0.1, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+                this.ctx.restore();
+            }
+            else if (plat.type === 'sponge') {
+                const squish = plat.squishY;
+                const currentH = plat.h * squish;
+                
+                this.ctx.save();
+                // Sponge body: yellow porous rectangle
+                const spongeGrad = this.ctx.createLinearGradient(rx, plat.y, rx, plat.y + plat.h);
+                spongeGrad.addColorStop(0, '#fef08a'); // bright yellow top
+                spongeGrad.addColorStop(1, '#eab308'); // golden yellow base
+                
+                this.ctx.fillStyle = spongeGrad;
+                this.ctx.strokeStyle = '#ca8a04';
+                this.ctx.lineWidth = 1.5;
+                this.drawRoundedRect(rx, plat.y + (plat.h - currentH), plat.w, currentH, 4, true, true);
+                
+                // Green scourer scrubbing layer at the bottom
+                this.ctx.fillStyle = '#166534'; // dark green
+                this.drawRoundedRect(rx + 2, plat.y + plat.h - Math.max(3, currentH * 0.18), plat.w - 4, Math.max(2, currentH * 0.18) - 2, 2, true, false);
+                
+                // Draw porous bubbles/dots on the sponge
+                this.ctx.fillStyle = 'rgba(202, 138, 4, 0.25)';
+                const spacing = 18;
+                for (let px = rx + 8; px < rx + plat.w - 8; px += spacing) {
+                    for (let py = plat.y + (plat.h - currentH) + 6; py < plat.y + plat.h - 8; py += spacing * 0.8) {
+                        this.ctx.beginPath();
+                        this.ctx.arc(px + (py % 5), py, 2.5, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
+                }
+                
+                this.ctx.restore();
+            }
+            else if (plat.type === 'donut') {
+                const squish = plat.squishY;
+                const currentH = plat.h * squish;
+                const wobble = Math.sin(plat.wobbleAngle) * plat.wobbleAmp;
+                
+                this.ctx.save();
+                this.ctx.translate(rx + plat.w / 2 + wobble, plat.y + plat.h);
+                this.ctx.scale(1 + (1 - squish) * 0.3, squish);
+                
+                // Golden dough body
+                const doughGrad = this.ctx.createRadialGradient(-5, -plat.h * 0.5, 2, 0, -plat.h * 0.5, plat.w / 2);
+                doughGrad.addColorStop(0, '#fde047'); // yellow dough
+                doughGrad.addColorStop(1, '#b45309'); // golden brown edge
+                this.ctx.fillStyle = doughGrad;
+                this.ctx.beginPath();
+                this.ctx.arc(0, -plat.h / 2, plat.w / 2, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Inner donut hole (cut out)
+                this.ctx.fillStyle = lvl.theme.bgGradEnd; // match background color
+                this.ctx.beginPath();
+                this.ctx.arc(0, -plat.h / 2, plat.w * 0.15, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Pink frosting
+                this.ctx.fillStyle = '#f472b6';
+                this.ctx.beginPath();
+                this.ctx.arc(0, -plat.h / 2, plat.w * 0.42, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Re-cut inner donut hole
+                this.ctx.fillStyle = lvl.theme.bgGradEnd;
+                this.ctx.beginPath();
+                this.ctx.arc(0, -plat.h / 2, plat.w * 0.15, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Sprinkles
+                const sprinkleColors = ['#60a5fa', '#34d399', '#fef08a', '#ffffff', '#a78bfa'];
+                for (let i = 0; i < 12; i++) {
+                    const angle = (i * Math.PI * 2) / 12 + 0.3;
+                    const r = plat.w * 0.28;
+                    const sx = Math.cos(angle) * r;
+                    const sy = -plat.h / 2 + Math.sin(angle) * r * 0.7;
+                    
+                    this.ctx.fillStyle = sprinkleColors[i % sprinkleColors.length];
                     this.ctx.save();
-                    
-                    this.ctx.fillStyle = '#d97706'; // חום קרטון
-                    this.ctx.strokeStyle = '#78350f';
-                    this.ctx.lineWidth = 3;
-                    
-                    // ציור גוף הקרטון (מלבן נוטה לפי זווית הרטט)
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(rx, plat.y + plat.h);
-                    this.ctx.lineTo(rx + wobble, plat.y);
-                    this.ctx.lineTo(rx + plat.w + wobble, plat.y);
-                    this.ctx.lineTo(rx + plat.w, plat.y + plat.h);
-                    this.ctx.closePath();
-                    this.ctx.fill();
-                    this.ctx.stroke();
-                    
-                    // סרט הדבקה (מסקנטייפ) במרכז
-                    this.ctx.fillStyle = 'rgba(78, 53, 15, 0.5)';
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(rx + plat.w/2 - 8 + wobble, plat.y);
-                    this.ctx.lineTo(rx + plat.w/2 + 8 + wobble, plat.y);
-                    this.ctx.lineTo(rx + plat.w/2 + 8, plat.y + plat.h);
-                    this.ctx.lineTo(rx + plat.w/2 - 8, plat.y + plat.h);
-                    this.ctx.closePath();
-                    this.ctx.fill();
-                    
-                    // קווי פתיחה של קרטון
-                    this.ctx.strokeStyle = '#451a03';
-                    this.ctx.lineWidth = 1.5;
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(rx + wobble, plat.y + 12);
-                    this.ctx.lineTo(rx + plat.w + wobble, plat.y + 12);
-                    this.ctx.stroke();
-                    
-                    // לוגו שביר/כוס יין קטן על הקרטון
-                    this.ctx.strokeStyle = '#78350f';
-                    this.ctx.lineWidth = 1.5;
-                    const stampX = rx + plat.w * 0.2 + wobble * 0.6;
-                    const stampY = plat.y + plat.h * 0.4;
-                    this.ctx.strokeRect(stampX, stampY, 15, 20);
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(stampX + 3, stampY + 4);
-                    this.ctx.lineTo(stampX + 12, stampY + 4);
-                    this.ctx.lineTo(stampX + 12, stampY + 11);
-                    this.ctx.lineTo(stampX + 7.5, stampY + 15);
-                    this.ctx.lineTo(stampX + 3, stampY + 11);
-                    this.ctx.closePath();
-                    this.ctx.moveTo(stampX + 7.5, stampY + 15);
-                    this.ctx.lineTo(stampX + 7.5, stampY + 18);
-                    this.ctx.moveTo(stampX + 4, stampY + 18);
-                    this.ctx.lineTo(stampX + 11, stampY + 18);
-                    this.ctx.stroke();
-                    
+                    this.ctx.translate(sx, sy);
+                    this.ctx.rotate(angle * 1.5);
+                    this.ctx.fillRect(-2, -1, 4, 2);
                     this.ctx.restore();
-                } else {
-                    // ג'לי רוטט עם פנים חמודות ודובדבן מבריק בראשו
-                    const wobble = Math.sin(plat.wobbleAngle) * plat.wobbleAmp;
-                    
-                    const grad = this.ctx.createLinearGradient(rx, plat.y, rx, plat.y + plat.h);
-                    if (plat.label && plat.label.includes("צהוב")) {
-                        grad.addColorStop(0, 'rgba(253, 224, 71, 0.85)');
-                        grad.addColorStop(1, 'rgba(234, 179, 8, 0.95)');
-                    } else {
-                        grad.addColorStop(0, 'rgba(232, 121, 249, 0.85)');
-                        grad.addColorStop(1, 'rgba(192, 38, 211, 0.95)');
-                    }
-                    
-                    this.ctx.fillStyle = grad;
-                    this.ctx.strokeStyle = '#f472b6';
-                    this.ctx.lineWidth = 3;
-                    
+                }
+                
+                this.ctx.restore();
+            }
+            else if (plat.type === 'hamburger') {
+                const squish = plat.squishY;
+                const currentH = plat.h * squish;
+                
+                this.ctx.save();
+                
+                // 1. Bottom Bun
+                this.ctx.fillStyle = '#d97706';
+                this.drawRoundedRect(rx + 4, plat.y + plat.h - currentH * 0.2, plat.w - 8, currentH * 0.2, 4, true, false);
+                
+                // 2. Meat Patty
+                this.ctx.fillStyle = '#451a03';
+                this.drawRoundedRect(rx + 2, plat.y + plat.h - currentH * 0.45, plat.w - 4, currentH * 0.28, 4, true, false);
+                
+                // 3. Cheese slice
+                this.ctx.fillStyle = '#facc15';
+                this.ctx.beginPath();
+                this.ctx.moveTo(rx + 8, plat.y + plat.h - currentH * 0.42);
+                this.ctx.lineTo(rx + plat.w * 0.4, plat.y + plat.h - currentH * 0.42);
+                this.ctx.lineTo(rx + plat.w * 0.2, plat.y + plat.h - currentH * 0.25);
+                this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.beginPath();
+                this.ctx.moveTo(rx + plat.w * 0.5, plat.y + plat.h - currentH * 0.42);
+                this.ctx.lineTo(rx + plat.w * 0.85, plat.y + plat.h - currentH * 0.42);
+                this.ctx.lineTo(rx + plat.w * 0.7, plat.y + plat.h - currentH * 0.25);
+                this.ctx.closePath();
+                this.ctx.fill();
+                
+                // 4. Green Lettuce
+                this.ctx.fillStyle = '#22c55e';
+                this.ctx.beginPath();
+                this.ctx.moveTo(rx + 2, plat.y + plat.h - currentH * 0.42);
+                for (let px = rx + 2; px <= rx + plat.w - 2; px += 8) {
+                    const waveY = (plat.y + plat.h - currentH * 0.42) - Math.sin((px - rx) * 0.5) * 3;
+                    this.ctx.lineTo(px, waveY);
+                }
+                this.ctx.lineTo(rx + plat.w - 2, plat.y + plat.h - currentH * 0.52);
+                this.ctx.lineTo(rx + 2, plat.y + plat.h - currentH * 0.52);
+                this.ctx.closePath();
+                this.ctx.fill();
+                
+                // 5. Top Bun
+                const topBunGrad = this.ctx.createLinearGradient(rx + 4, plat.y + (plat.h - currentH), rx + 4, plat.y + plat.h - currentH * 0.52);
+                topBunGrad.addColorStop(0, '#f59e0b');
+                topBunGrad.addColorStop(1, '#b45309');
+                this.ctx.fillStyle = topBunGrad;
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(rx + 4, plat.y + plat.h - currentH * 0.52);
+                this.ctx.quadraticCurveTo(rx + plat.w/2, plat.y + (plat.h - currentH) - currentH * 0.1, rx + plat.w - 4, plat.y + plat.h - currentH * 0.52);
+                this.ctx.closePath();
+                this.ctx.fill();
+                
+                // 6. Sesame seeds
+                this.ctx.fillStyle = '#ffffff';
+                const sesames = [
+                    { x: 0.3, y: 0.75 }, { x: 0.4, y: 0.65 }, { x: 0.5, y: 0.72 },
+                    { x: 0.6, y: 0.63 }, { x: 0.7, y: 0.76 }
+                ];
+                for (const seed of sesames) {
+                    const sx = rx + plat.w * seed.x;
+                    const sy = (plat.y + plat.h - currentH) + currentH * 0.35 * seed.y;
                     this.ctx.beginPath();
-                    this.ctx.moveTo(rx + 8, plat.y + plat.h);
-                    
-                    const steps = 14;
-                    for (let i = 0; i <= steps; i++) {
-                        const ratio = i / steps;
-                        const px = rx + 14 + ratio * (plat.w - 28) + wobble * Math.sin(ratio * Math.PI);
-                        const surfaceWobble = Math.cos(ratio * Math.PI * 2 + plat.wobbleAngle) * (plat.wobbleAmp * 0.6);
-                        const py = plat.y + surfaceWobble;
-                        this.ctx.lineTo(px, py);
-                    }
-                    
-                    this.ctx.lineTo(rx + plat.w - 8, plat.y + plat.h);
-                    this.ctx.closePath();
+                    this.ctx.arc(sx, sy, 1.5, 0, Math.PI * 2);
                     this.ctx.fill();
-                    this.ctx.stroke();
-                    
-                    // פס ברק לבן מבריק
-                    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
-                    this.ctx.lineWidth = 2.5;
+                }
+                
+                this.ctx.restore();
+            }
+            else if (plat.type === 'pillow') {
+                const squish = plat.squishY;
+                const currentH = plat.h * squish;
+                
+                this.ctx.save();
+                
+                // Pillow gradient
+                const pillowGrad = this.ctx.createLinearGradient(rx, plat.y, rx, plat.y + plat.h);
+                pillowGrad.addColorStop(0, '#ffffff'); // clean white center
+                pillowGrad.addColorStop(1, '#cbd5e1'); // soft gray border
+                
+                this.ctx.fillStyle = pillowGrad;
+                this.ctx.strokeStyle = '#94a3b8';
+                this.ctx.lineWidth = 2;
+                
+                // draw the puffed body (with curved sides)
+                const py = plat.y + (plat.h - currentH);
+                this.ctx.beginPath();
+                this.ctx.moveTo(rx + 8, py);
+                this.ctx.quadraticCurveTo(rx + plat.w / 2, py - 4 * squish, rx + plat.w - 8, py);
+                this.ctx.quadraticCurveTo(rx + plat.w + 4, py + currentH / 2, rx + plat.w - 8, py + currentH);
+                this.ctx.quadraticCurveTo(rx + plat.w / 2, py + currentH + 4 * squish, rx + 8, py + currentH);
+                this.ctx.quadraticCurveTo(rx - 4, py + currentH / 2, rx + 8, py);
+                this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.stroke();
+                
+                // Central tuft/button with creased lines radiating
+                const cx = rx + plat.w / 2;
+                const cy = py + currentH / 2;
+                
+                this.ctx.strokeStyle = '#94a3b8';
+                this.ctx.lineWidth = 1.5;
+                
+                // Creases
+                const creases = [0, 0.5 * Math.PI, Math.PI, 1.5 * Math.PI];
+                for (const angle of creases) {
                     this.ctx.beginPath();
-                    this.ctx.moveTo(rx + 16 + wobble, plat.y + 8);
-                    this.ctx.quadraticCurveTo(rx + 24 + wobble, plat.y + 4, rx + 40 + wobble, plat.y + 4);
-                    this.ctx.stroke();
-                    
-                    // עיניים שעוקבות או זזות
-                    const midX = rx + plat.w / 2 + wobble * 0.5;
-                    const midY = plat.y + plat.h / 2;
-                    
-                    this.ctx.fillStyle = '#ffffff';
-                    this.ctx.beginPath();
-                    this.ctx.arc(midX - 12, midY - 4, 6, 0, Math.PI * 2);
-                    this.ctx.arc(midX + 12, midY - 4, 6, 0, Math.PI * 2);
-                    this.ctx.fill();
-                    
-                    this.ctx.fillStyle = '#000000';
-                    this.ctx.beginPath();
-                    this.ctx.arc(midX - 12, midY - 4, 2.8, 0, Math.PI * 2);
-                    this.ctx.arc(midX + 12, midY - 4, 2.8, 0, Math.PI * 2);
-                    this.ctx.fill();
-                    
-                    // פה מחייך
-                    this.ctx.strokeStyle = '#000000';
-                    this.ctx.lineWidth = 1.8;
-                    this.ctx.beginPath();
-                    this.ctx.arc(midX, midY + 4, 4, 0, Math.PI);
-                    this.ctx.stroke();
-                    
-                    // דובדבן בראשו של הג'לי
-                    const cherryX = midX;
-                    const cherryY = plat.y - 4;
-                    this.ctx.fillStyle = '#ef4444';
-                    this.ctx.beginPath();
-                    this.ctx.arc(cherryX, cherryY, 6.5, 0, Math.PI * 2);
-                    this.ctx.fill();
-                    
-                    // גבעול ירוק
-                    this.ctx.strokeStyle = '#15803d';
-                    this.ctx.lineWidth = 1.5;
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(cherryX, cherryY - 4);
-                    this.ctx.quadraticCurveTo(cherryX + 8, cherryY - 14, cherryX + 4, cherryY - 18);
+                    this.ctx.moveTo(cx, cy);
+                    this.ctx.lineTo(cx + Math.cos(angle) * 12, cy + Math.sin(angle) * 8 * squish);
                     this.ctx.stroke();
                 }
-            } 
+                
+                // Tuft button
+                this.ctx.fillStyle = '#cbd5e1';
+                this.ctx.beginPath();
+                this.ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Corner tassels
+                this.ctx.fillStyle = '#94a3b8';
+                const tassels = [
+                    { x: rx + 6, y: py + 2 },
+                    { x: rx + plat.w - 6, y: py + 2 },
+                    { x: rx + 6, y: py + currentH - 2 },
+                    { x: rx + plat.w - 6, y: py + currentH - 2 }
+                ];
+                for (const t of tassels) {
+                    this.ctx.beginPath();
+                    this.ctx.arc(t.x, t.y, 3.5, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+                
+                this.ctx.restore();
+            }
             else if (plat.type === 'soda_can') {
                 const py = plat.currentY;
                 const ph = plat.currentH;
@@ -933,14 +1217,6 @@ class Game {
                         this.ctx.stroke();
                     }
                 }
-            }
-
-            // כתיבת טקסט מעל לפלטפורמה (לדוגמה: כדור לחץ) - בצבע כהה קריא
-            if (plat.label && plat.type !== 'normal') {
-                this.ctx.fillStyle = 'rgba(15, 23, 42, 0.6)'; // צבע אפור כהה שקוף מעט
-                this.ctx.font = 'bold 11px Rubik';
-                this.ctx.textAlign = 'center';
-                this.ctx.fillText(plat.label, rx + plat.w/2, plat.y - 12);
             }
 
             this.ctx.restore();

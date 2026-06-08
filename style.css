@@ -581,3 +581,21 @@ body.hawaii-selected .control-btn:active {
     }
 }
 
+/* אפקט אזהרת זמן נמוך ב-HUD */
+.timer-indicator.low-time #hud-timer-value {
+    color: #ef4444 !important;
+    text-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
+    display: inline-block;
+    animation: pulseRed 0.5s infinite alternate ease-in-out;
+}
+
+@keyframes pulseRed {
+    from {
+        transform: scale(1);
+    }
+    to {
+        transform: scale(1.15);
+    }
+}
+
+
