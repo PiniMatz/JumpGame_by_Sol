@@ -346,6 +346,18 @@ class GamePhysics {
                         // קפיצת דחיפה קלה (נחמד לריצה קפיצית על פצפצים)
                         p.vy = isSlam ? -6.5 : -5.2;
                         p.grounded = false;
+
+                        // בעולם הראשון בלבד - בועות הפצפצים יחזרו להתנפח אחרי 10 שניות
+                        if (this.level && this.level.worldId === 1) {
+                            setTimeout(() => {
+                                // אימות שאנחנו עדיין באותו השלב הפעיל במאגר
+                                if (this.level && this.level.worldId === 1 && this.level.platforms.includes(plat)) {
+                                    bubble.popped = false;
+                                    // נוסיף אפקט אבק קטן ברגע שהבועה מתנפחת מחדש
+                                    particles.spawnDust(bubble.x, plat.y + 10, '#bae6fd');
+                                }
+                            }, 10000);
+                        }
                     } else {
                         // הבועה כבר פקועה
                         particles.spawnDust(p.x + p.w / 2, plat.y, '#e2e8f0');
