@@ -8,6 +8,46 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Rubik:wght@300;400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script>
+        // לוכד שגיאות גלובלי להצגה על המסך
+        window.addEventListener('error', function(e) {
+            const errDiv = document.createElement('div');
+            errDiv.style.position = 'absolute';
+            errDiv.style.top = '10px';
+            errDiv.style.left = '10px';
+            errDiv.style.right = '10px';
+            errDiv.style.background = 'rgba(220, 38, 38, 0.95)';
+            errDiv.style.color = 'white';
+            errDiv.style.padding = '15px';
+            errDiv.style.borderRadius = '10px';
+            errDiv.style.zIndex = '99999';
+            errDiv.style.direction = 'ltr';
+            errDiv.style.textAlign = 'left';
+            errDiv.style.fontFamily = 'monospace';
+            errDiv.style.fontSize = '14px';
+            errDiv.style.whiteSpace = 'pre-wrap';
+            errDiv.style.boxShadow = '0 10px 25px rgba(0,0,0,0.5)';
+            errDiv.innerHTML = '<strong>JS Error:</strong><br>' + e.message + '<br>at ' + e.filename + ':' + e.lineno + ':' + e.colno + '<br><br>Stack Trace:<br>' + (e.error ? e.error.stack : 'No stack available');
+            document.body.appendChild(errDiv);
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            const errDiv = document.createElement('div');
+            errDiv.style.position = 'absolute';
+            errDiv.style.top = '10px';
+            errDiv.style.left = '10px';
+            errDiv.style.right = '10px';
+            errDiv.style.background = 'rgba(220, 38, 38, 0.95)';
+            errDiv.style.color = 'white';
+            errDiv.style.padding = '15px';
+            errDiv.style.borderRadius = '10px';
+            errDiv.style.zIndex = '99999';
+            errDiv.style.direction = 'ltr';
+            errDiv.style.textAlign = 'left';
+            errDiv.style.fontFamily = 'monospace';
+            errDiv.innerHTML = '<strong>Unhandled Promise Rejection:</strong><br>' + e.reason;
+            document.body.appendChild(errDiv);
+        });
+    </script>
 </head>
 <body>
     <div id="app-container">
